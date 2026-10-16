@@ -1,0 +1,3 @@
+# Optional CP-SAT resource refinement only; no SciPy import in retained workflows.
+-r requirements.txt
+ortools==9.15.6755

@@ -1,0 +1,18 @@
+{
+  "recorded_date": "2026-10-16",
+  "source_code": {
+    "authorship": "user_sole_author",
+    "evidence": "用户在本轮会话明确确认：这个代码全部我写的。",
+    "scope": "项目原有 Python 实现及其发布候选工程副本",
+    "coauthor_permission_blocker": false,
+    "license_selected": false,
+    "note": "以用户直接作者声明更新源码归属状态；历史 Phase 2–4 待审记录保留，不继续要求不存在的共同作者授权。用户尚未选择通用复用许可证，不自行添加 LICENSE。"
+  },
+  "not_inferred_from_code_authorship": [
+    "竞赛题目及提交模板的再分发权",
+    "原始 Excel、DEM、第三方地图和地理数据的再分发权",
+    "论文、原图片与工作簿全部内容及元数据的公开状态"
+  ],
+  "held_materials": "原始材料、冻结工作簿、图像、缓存和本地日志继续隔离；源码作者确认不自动解除它们的忽略规则。",
+  "remote_publication_executed": false
+}

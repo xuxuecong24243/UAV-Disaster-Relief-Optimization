@@ -1,0 +1,1449 @@
+--- a/README.md
++++ b/README.md
+@@ -1,17 +1,221 @@
+ # 山区洪涝灾害下无人机运输与通信协同优化
+ 
+-当前为 Phase 3 发布候选副本：已接入统一路径、隔离输出和轻量验证；完整优化复现与公开权限审核尚未完成。正式展示 README 留待 Phase 4 编写。
+-
+-正式入口、参数和原文件 SHA-256 见 [版本锁定](docs/formal_versions.json)；全部复制文件见 [溯源清单](docs/provenance.csv)。
+-
+-- `src/problem1`：地形航段、载荷与集合划分；`src/problem2`：正式 ALNS；`src/problem3`：通信、中继与联合搜索；`src/problem4`：固定时序分区和资源核算。
+-- `experiments`：扩展实验，与正式主流程分开；`scripts`：原有绘图、提交和检查工具。
+-- `results/reference`：本地只读冻结结果；`results/runs`：按独立运行目录保存新实验输出及来源清单。
+-- `data/raw`：仅输入清单，原始数据及 DEM 未复制；`data/processed`：已有中间结果的位置映射，不重复存储。
+-- `review_hold`：仅本地审核的缓存与实验审计证据；冻结缓存经哈希与输入核验后可读取。
+-
+-运行入口为 `python run.py --list`。环境、输入映射与复现命令见 [工程运行说明](docs/running.md)，验证边界和未解决问题见 [Phase 3 报告](docs/phase3_report.md)。本目录不是开箱即用的公开发行版；原始数据及 DEM 需要显式提供。
+-
+-正式结果、扩展实验结果和本地审核材料均被 `.gitignore` 排除，防止未经审核进入 Git。不要直接压缩整个目录公开上传。未添加 LICENSE；代码、数据、结果和文档的授权范围见 [审核清单](docs/review_required.csv) 与 [公开状态](docs/publication_gate.json)。
+-
+-Phase 2 的溯源、版本与校验清单保留为历史冻结记录，适配后的源码哈希另见 [Phase 3 变更清单](docs/phase3_changes.csv)，未改写原始来源哈希。冻结阶段记录见 [Phase 2 报告](docs/phase2_report.md)。
++**UAV Disaster Relief Optimization** · 运筹优化 · 资源约束调度 · 地理空间计算
++
++面向山区洪涝灾害后的物资配送与通信保障，将地形航段计算、物资组批、多无人机调度、中继保障和任务分区连接为四个递进问题。实现包含集合划分 MILP、ALNS、VNS、无标签分区完整枚举与 Pareto 筛选，各方法承担不同层次的决策。
++
++当前为 **GitHub 发布候选项目**：已完成路径整理、正式结果冻结和轻量验证；大规模优化尚未重新执行。原始数据、DEM、论文、图片及结果文件的公开授权仍待确认，受控材料未纳入公开跟踪范围。
++
++## 目录
++
++- [项目概述](#项目概述)
++- [核心技术](#核心技术)
++- [技术路线](#技术路线)
++- [四个问题](#四个问题)
++- [项目结构](#项目结构)
++- [环境与快速开始](#环境与快速开始)
++- [实验结果](#实验结果)
++- [可复现性与已知限制](#可复现性与已知限制)
++- [资料与公开范围](#资料与公开范围)
++
++## 项目概述
++
++山区地形同时影响飞行距离、净空高度、能源消耗和无线链路可见性。本项目先确定航段与安全载荷，再构造物资运输任务；在无人机、共享电池和配送时限约束下安排运输，并增加中继无人机维持通信；最后在既定联合调度时序下分析服务区分组与资源配置。
++
++四个问题分别回答：**如何组批、如何调度、如何保障通信、如何配置分区资源**。目标函数与指标口径随问题变化，不能用一个加权目标概括全部模型，也不能将各阶段的时间指标直接横向比较。
++
++## 核心技术
++
++| 问题 | 数学模型与算法 | 工具及关键约束 | 输出与验证依据 |
++|---|---|---|---|
++| Q1 单点往返运输 | 可行批次枚举；集合划分 MILP；架次、能耗、累计作业时间的字典序优化 | PyProj、Rasterio、Gurobi；净空、质量、体积、电量，每箱恰好配送一次 | 航段、安全载荷、18 个批次；冻结工作簿和小规模模型构建检查 |
++| Q2 多点运输调度 | ALNS；破坏修复、局部搜索、模拟退火接受 | Python、NumPy、Pandas；无人机、共享电池充电与占用、硬时限 | 20 个架次与资源时间表；归档 16 项可行性检查 |
++| Q3 运输与通信协同 | 链路与地形遮挡计算；中继覆盖；联合评价；独立 ALNS / VNS 搜索 | 地理空间计算与通信几何缓存；运输、通信时间窗、设备资源 | 运输/中继联合时间表；归档数值覆盖检查 |
++| Q4 分区与资源配置 | 任务关联图；无标签分区枚举；固定时序资源核算；Pareto 筛选 | NetworkX、Pandas；7 个服务区块、分区内资源占用及库存差额 | K=2、K=3 候选与代表方案；1008 项资源计数复核 |
++
++主流程与绘图依赖见 [requirements.txt](requirements.txt)：NumPy、Pandas、Matplotlib、OpenPyXL、Rasterio、PyProj、GurobiPy、NetworkX、Affine、Pillow。OR-Tools 仅用于 [可选 CP-SAT 扩展](requirements-experiments.txt)，没有作为正式 Q2 求解器；源码没有 SciPy 导入。
++
++## 技术路线
++
++```mermaid
++flowchart TD
++    R[原始节点、物资、机型与能源数据] --> G[测地距离与 DEM 净空航段]
++    D[DEM] --> G
++    G --> P[最大安全载荷]
++    P --> B[Q1 候选批次与集合划分]
++    B --> T[Q2 多点运输 ALNS]
++    G --> T
++    T --> C[运输轨迹通信计算]
++    D --> C
++    L[通信链路参数] --> C
++    C --> E[中继覆盖与精英池]
++    E --> J[通信缓存与联合调度评价]
++    T --> W[从 Q2 恢复运输初解]
++    W --> A[Q3 ALNS 独立搜索]
++    W --> V[Q3 VNS 独立搜索]
++    J --> A
++    J --> V
++    V --> F[选定的 20 周期 VNS 正式结果]
++    F --> Q[Q4 固定时序分区与资源核算]
++    S[综合提交表中的通信保障区间] --> Q
++    Q --> N[完整枚举与 Pareto 筛选]
++```
++
++图中的依赖表示实现中的输入关系，不代表统一入口会自动执行整条流水线。**Q3 正式 VNS 从 Q2 运输解恢复初解，没有直接读取 ALNS 最优解继续优化。** 综合提交表的通信保障区间采用显式读取映射，未伪造缺失的历史模板。
++
++## 四个问题
++
++### Q1：单点往返运输与组批
++
++用 WGS84 测地距离及 DEM 栅格采样计算航段，在 50 m 净空及机型载荷、电量限制下搜索安全载荷。DFS 枚举满足质量、体积、能源约束的物资批次，建立每箱物资恰好被选择一次的集合划分模型。Gurobi 按运输架次、总能耗、累计作业时间依次优化；能耗锁定使用实现中的数值容差。
++
++输出航段表、安全载荷表和物资分批表，作为 Q2 的物理参数与初始解依据。正式批次由 19,525 个候选中选择；这里的时间是各批次作业时长之和。
++
++### Q2：多点运输与共享资源调度
++
++在 Q1 数据与批次基础上，联合决定物资分组、访问次序、无人机类型与任务优先顺序。调度评价器处理实体无人机和共享电池的占用、充电及配送时限；ALNS 使用 7 类破坏算子、4 类修复策略、局部搜索和模拟退火接受机制。
++
++正式入口固定 **1000 次迭代、随机种子 20260927、权重 (0.55, 0.15, 0.15, 0.15)**，对应加权延误、最大完工时间、能耗和架次，目标以基准尺度归一化。输出运输航线、配送明细、无人机与电池时间表、收敛记录。1500 次版本属于扩展实验。
++
++### Q3：连续通信保障的数值建模与联合搜索
++
++根据链路预算和 DEM 遮挡识别直连受限区间，生成中继候选、覆盖关系及精英池；联合评价器安排运输与中继任务，核算无人机、电池、中继能源组件和联合目标。缓存复用航段与候选中继的通信几何计算。
++
++ALNS 与 VNS 是独立搜索路径。正式归档选用 **20 周期 VNS** 的干净结果，包含 20 条有效运输记录；VNS 包含航线内交换/反转、服务区箱组搬移/交换、机型与优先级调整等邻域。通信检查使用时间采样和边界细化，归档的零未覆盖时长是该数值精度下的结果，不能解释为任意连续时刻的解析证明。
++
++### Q4：任务分区与资源配置
++
++从 Q3 正式时序及综合提交表通信区间建立服务区关联和任务占用。对 7 个服务区块的 K=2、K=3 无标签分区完整枚举，在**固定任务时序**下分别核算运输无人机、电池、中继无人机与中继能源组件，按 8 类资源计数和 6 类工作量均衡指标筛选 Pareto 方案。
++
++输出候选分区、资源明细、库存差额及代表方案 K2-032、K3-007。此阶段分析组织方式与资源需求，没有重新优化运输时序，也没有得出分区降低完工时间的结论。
++
++模型、公式、算子和代码定位见 [方法文档](docs/methodology.md)。
++
++## 项目结构
++
++```text
++UAV-Disaster-Relief-Optimization/
++├── run.py                         # 统一入口、运行清单和独立输出目录
++├── project_paths.py               # 输入映射、输出保护、可信缓存检查
++├── requirements*.txt
++├── src/problem1/ ... problem4/     # 四个问题的正式实现
++├── experiments/                   # 基线、敏感性、种子及扩展算法
++├── scripts/                       # 绘图、提交表与检查工具
++├── data/raw/                      # 原始输入清单；数据另行授权提供
++├── data/processed/                # 中间依赖映射
++├── results/reference/             # 本地冻结正式结果，只读且暂不跟踪
++├── results/runs/                  # 新实验及来源清单，不进入公开仓库
++├── review_hold/                   # 本地待审核缓存、实验证据
++├── docs/                          # 方法、运行、溯源、审核与阶段报告
++└── tests/                         # 15 项轻量检查
++```
++
++| 问题 | 正式运行入口（传给 `run.py` 的脚本名，不含 `.py`） |
++|---|---|
++| Q1 | `problem1_segment_preprocessing` → `problem1_max_safe_payload` → `problem1_batch_optimization` |
++| Q2 | `problem2_final_run_and_visualization` |
++| Q3 | `problem3_vns`；另保留独立的 `problem3_alns` 与通信预处理入口 |
++| Q4 | `problem4_full_enumeration`；归档报告复核使用 `problem4_final_paper_results` |
++
++入口清单可由 `run.py --list` 查询。版本参数见 [formal_versions.json](docs/formal_versions.json)，源码和输入映射见 [provenance.csv](docs/provenance.csv)、[dependencies.csv](docs/dependencies.csv)。
++
++## 环境与快速开始
++
++已验证环境为 **Windows / Python 3.9.10**；当前环境复用了本机部分依赖，以下全新环境安装过程尚未从零验证，其他 Python 版本和操作系统也未验证。
++
++```powershell
++python -m venv .venv
++.\.venv\Scripts\python.exe -m pip install -r requirements.txt
++# 仅需 CP-SAT 扩展时：
++.\.venv\Scripts\python.exe -m pip install -r requirements-experiments.txt
++```
++
++Q1 集合划分需要可用的 Gurobi 许可证。已验证小规模真实模型构建，未调用完整优化；安装 `gurobipy` 不代表已具备完整实验所需的许可。请勿提交许可证文件或凭据。
++
++### A. 已有结果复核与可视化
++
++在项目根目录执行。以下复核依赖**本地已授权取得的冻结结果**；公开代码副本不会自动包含这些工作簿。
++
++```powershell
++# Phase 4 已验证；也验证了从其他工作目录查询入口
++.\.venv\Scripts\python.exe -B run.py --list
++# Phase 3 已验证：读取归档、生成独立报告，不启动优化
++.\.venv\Scripts\python.exe -B run.py problem4_final_paper_results
++# Phase 4 已验证 15 项全通过；替换为自己有权使用的原始 data 根
++$env:UAV_RAW_DIR = '.\authorized-uav-data'
++.\.venv\Scripts\python.exe -B -m unittest discover -s tests -v
++```
++
++未配置外部数据时，相关两项测试会明确跳过；环境或许可不可用也可能跳过 Gurobi 模型检查。跳过项不计为验证通过。
++
++现有 Q3 绘图入口如下，**仅完成静态检查，未在本阶段执行**。它读取归档调度与通信区间并检查记录，不等同于重新计算全套通信几何；还需原始节点、DEM 和综合提交表。
++
++```powershell
++.\.venv\Scripts\python.exe -B run.py plot_problem3_final_results --raw-dir '.\authorized-uav-data'
++```
++
++### B. 从原始输入重新运行优化
++
++先按 [输入清单](data/raw/expected_inputs.csv) 准备有使用权限的 Excel 与 DEM。以下入口与参数经静态核对，**完整求解尚未执行**；Q2/Q3 和通信缓存重建需先评估计算预算。
++
++```powershell
++# 原始输入的第一个预处理步骤
++.\.venv\Scripts\python.exe -B run.py problem1_segment_preprocessing --raw-dir '.\authorized-uav-data'
++# 正式 Q2 参数已在入口锁定；默认使用冻结的 Q1 中间结果
++.\.venv\Scripts\python.exe -B run.py problem2_final_run_and_visualization --raw-dir '.\authorized-uav-data'
++# 正式 VNS；还需经过来源校验的通信缓存及相应依赖
++.\.venv\Scripts\python.exe -B run.py problem3_vns --raw-dir '.\authorized-uav-data'
++```
++
++这些命令不会自动把新 Q1 输出传给 Q2。完全从头运行需要显式整理中间输入，再使用 `--input-dir`；步骤见 [从原始输入构建中间依赖](docs/running.md#从原始输入构建中间依赖)。新结果只写入 `results/runs/` 的独立目录，`results/reference/` 保持冻结。命令状态、输入要求与证据见 [命令核对表](docs/commands.csv)。
++
++## 实验结果
++
++下表提取自正式冻结工作簿，保留 6 位小数显示；不是本次重新优化的结果。单元格定位、完整数值及哈希见 [结果口径与证据](docs/results.md) 和 [指标清单](docs/result_metrics.csv)。
++
++| 指标 | Q1 单点组批 | Q2 多点运输 | Q3 运输与通信联合 |
++|---|---:|---:|---:|
++| 运输批次 / 架次 | 18 | 20 | 20 |
++| 运输物资 | 80 箱 | 80 箱 | 80 箱 |
++| 中继架次 | — | — | 3 |
++| 能耗 / kWh | 59.128691 | 65.635532 | 68.771096 |
++| 时间 / s | 32776.015749（累计作业） | 6955.476520（最大完工） | 6985.310068（联合最大完工） |
++| 加权延误 / 加权秒 | — | 0 | 0 |
++| 归档可行性检查 | `OPTIMAL` 求解状态 | 16 项 PASS | 13 项 PASS |
++
++Q1 的累计时间是各批次时长之和；Q2/Q3 时间是并行调度的最大完工时间，不能据此计算跨问题的“提速比例”。Q3 能耗包含运输与中继两部分，联合完工时间取二者返航完成时间的最大值。
++
++Q3 正式配置为 **8 架运输无人机、14 块电池、2 架中继无人机、3 套中继能源组件**；3 个中继架次不等于 3 架实体中继无人机。归档未覆盖通信时长为 **0 s**，检查采用 1 s 采样及对已检测转换边界的 0.01 s 细化，仍具有离散数值检查的限制。
++
++| Q4 分区 | 枚举方案数 | Pareto 方案数 | 代表方案 | 运输无人机 / 电池 / 中继无人机 / 中继能源组件 | 重核算能耗 / kWh |
++|---|---:|---:|---|---|---:|
++| K=2 | 63 | 27 | K2-032 | 9 / 15 / 3 / 3 | 69.530804 |
++| K=3 | 301 | 58 | K3-007 | 10 / 16 / 4 / 4 | 71.525243 |
++
++两方案均沿用 **6985.310068 s** 的 Q3 时序。相对于现有库存，四类资源缺口分别为 `(1, 1, 1, 0)` 与 `(2, 2, 2, 0)`；Pareto 筛选在资源计数与平衡指标上进行，能耗在后续方案分析中核算。Q3 实际使用量不等于库存上限。
++
++**图片展示待授权确认。** 已登记 15 张地形航迹、搜索收敛、调度甘特、通信覆盖及 Pareto 代表图，其中 12 张列为首页候选。现阶段不复制、嵌入或提供未经确认的图片下载；来源、论文图号和对应脚本见 [图片登记](docs/figures.md)。
++
++## 可复现性与已知限制
++
++| 状态 | 已有证据与范围 |
++|---|---|
++| 已验证通过 | Phase 4 回归 15 项轻量测试；其中检查 41 个模块导入、正式参数、路径隔离、冻结结果结构和缓存来源 |
++| 已验证通过 | Phase 4：36 份正式结果 SHA-256 保持一致；Phase 3：Q4 的 126 个子集 × 8 项资源计数，共 1008 项复核一致 |
++| 已验证通过（Phase 3） | Q4 报告 25 项检查；10 份 LaTeX 表字节一致；Excel 数值比较容差为 `1e-9`，不声称工作簿字节一致 |
++| 静态检查通过 | 入口与示例命令的参数和依赖关系；不等于实际求解成功 |
++| 尚未执行 | 大规模 ALNS/VNS、全量通信缓存重建、四问题端到端优化、全新环境安装 |
++| 存在阻塞 | 公开授权未确认；部分扩展实验缓存缺失；独立权重重新求解实验未完整完成 |
++
++正式缓存覆盖 135/210 条有向航段，剩余航段按原算法按需计算。未知来源 pickle 不应加载，已有缓存也必须与实际输入指纹一致。
++
++Q2 的固定尺度归一化、论文与代码的延误计入口径差别，Q3 ALNS 的固定基准与默认权重不一致，以及 NSGA-II、CP-SAT 扩展的可比性边界，均保留在 [已知问题](docs/known_issues.md) 与 [扩展实验说明](experiments/README.md)。本次文档整理没有借此修改算法，也没有将这些实验包装为已验证的性能提升。
++
++## 资料与公开范围
++
++- [方法与算法](docs/methodology.md)、[运行说明](docs/running.md)、[实验与扩展算法](experiments/README.md)。
++- [正式结果口径](docs/results.md)、[图片来源](docs/figures.md)、[版本锁定](docs/formal_versions.json)。
++- [Phase 3 工程报告](docs/phase3_report.md)、[Phase 4 文档与验收报告](docs/phase4_report.md)。
++- [公开授权与隐私审核](docs/publication_review.md)、[原始待审核清单](docs/review_required.csv)。
++
++数据、DEM、竞赛题目及模板、最终论文、合作代码贡献、结果工作簿和图片需要分别确认公开权限。`.gitignore` 只是隔离措施，不构成授权证明；本地文件存在也不意味着可以公开。暂未添加 LICENSE，未上传 GitHub。
+--- /dev/null
++++ b/docs/commands.csv
+@@ -0,0 +1,37 @@
++command_id,command,purpose,status,prerequisites,evidence,side_effects
++C01,python -m venv .venv,建立全新隔离Python环境,static_only,在项目根运行；Python 3.9.10为已验证解释器；本机现有.venv不要覆盖,docs/running.md；Phase3实际使用system-site-packages环境而非此空白环境流程,创建.venv；未执行空白环境完整安装
++C02,.\.venv\Scripts\python.exe -m pip install -r requirements.txt,安装正式流程与绘图依赖,static_only,已创建虚拟环境；可访问包源；Gurobi许可证另行配置,requirements.txt；docs/phase3_report.md说明未验证全量干净安装,向虚拟环境安装软件；不运行优化
++C03,.\.venv\Scripts\python.exe -m pip install -r requirements-experiments.txt,安装CP-SAT可选扩展依赖,static_only,需要可选OR-Tools实验时使用；基础依赖另按requirements.txt安装,requirements-experiments.txt；docs/running.md,向虚拟环境安装软件；不运行实验
++C04,.\.venv\Scripts\python.exe -B run.py --list,列出41个现有入口,verified_phase4,解释器路径与当前项目对应；从其他CWD执行时需给解释器和run.py绝对路径,Phase3成功；Phase4从项目外CWD再次执行退出0并列出41项,只读取入口路径；不创建运行目录或启动实验
++C05,.\.venv\Scripts\python.exe -B -m unittest discover -s tests -v,回归15项轻量测试,verified_phase4,UAV_RAW_DIR显式指向已知来源的实际原始data目录；本地冻结结果与受信缓存齐全；依赖及本机Gurobi模型环境可用；占位路径本身未经执行,results/runs/phase4_regression/unittest.log；15项通过0失败0错误0跳过；87.017秒；Phase3同套测试通过,在results/runs创建测试产物；不运行ALNS/VNS或完整枚举；不修改reference
++C06,.\.venv\Scripts\python.exe -B -m unittest discover -s tests -v,未配置外部原始数据时的有限检查,static_only,本地归档与依赖齐全；若未设UAV_RAW_DIR相关两项测试会skip；无Gurobi许可时建模项也可能skip,tests/test_release.py与docs/running.md；未将带完整外部输入的通过记录套用于缺数据模式,创建隔离测试产物；跳过项不得计为验证通过
++C07,.\.venv\Scripts\python.exe -B run.py problem4_final_paper_results,从冻结枚举结果重算最终报告,verified_phase3,本地results/reference中Q4依赖表完整；不需要重新枚举；默认新运行目录,docs/phase3_report.md；results/runs/phase3_q4_report_check/run_manifest.json；25项PASS；Excel最大绝对差4.3655745685100555e-11且10份LaTeX字节一致,仅在新的results/runs目录生成工作簿和LaTeX报告；不覆盖正式归档
++C08,.\.venv\Scripts\python.exe -B run.py read_dem --raw-dir $env:UAV_RAW_DIR,只读检查DEM尺寸与坐标参考,verified_phase3,先将UAV_RAW_DIR设为拥有使用权限的真实data目录；.\authorized-uav-data仅是占位示例且该字面路径未执行,docs/phase3_report.md；results/runs/phase3_foreign_cwd_check/run_manifest.json；从外部CWD读取1309×1486的EPSG:4326 DEM,读取外部DEM并在新runs写运行清单；不改外部输入
++C09,python run.py problem1_segment_preprocessing --raw-dir $env:UAV_RAW_DIR --run-dir results/runs/q1_segments,重做Q1航段与DEM净空预处理,static_only,已授权原始Excel和DEM；UAV_RAW_DIR显式配置；q1_segments必须不存在,src/problem1/problem1_segment_preprocessing.py；仅路径及模块导入检查通过；未执行完整预处理,读取DEM并写新航段工作簿与辅助图到runs；存在计算开销
++C10,python run.py problem1_max_safe_payload --raw-dir $env:UAV_RAW_DIR --input-dir results/runs/q1_segments,由指定航段计算最大安全载荷,static_only,上一步航段结果可用；其余未覆盖输入按processed和reference回退；新运行目录自动独立生成,src/problem1/problem1_max_safe_payload.py；未执行完整计算,输出最大安全载荷表至独立runs；不会自动供后续批次步骤读取
++C11,python run.py problem1_batch_optimization --raw-dir $env:UAV_RAW_DIR,从默认已冻结中间输入求解Q1集合划分,static_only,原始需求与机型数据齐全；默认读冻结航段及载荷；若接新中间结果需另给input-dir；Gurobi完整模型许可与计算预算,src/problem1/problem1_batch_optimization.py；Phase3只用已选18候选构建80条约束且未optimize,枚举候选并调用Gurobi完整优化；新结果写runs；本阶段未执行
++C12,python run.py problem2_final_run_and_visualization --raw-dir $env:UAV_RAW_DIR,运行Q2正式1000轮ALNS及绘图,static_only,原始输入与Q1正式批次和航段齐全；种子20260927及正式权重不变；先评估长实验预算,docs/formal_versions.json；静态参数与导入检查通过；Phase3及Phase4未重新求解,启动优化并生成工作簿和图片至runs；不是纯归档可视化命令
++C13,python run.py problem3_alns --raw-dir $env:UAV_RAW_DIR,运行Q3默认联合ALNS分支,static_only,原始输入及Q1航段和Q2解和Q3覆盖表/精英池齐全；缓存来源及输入指纹校验通过；保留已知暖启动权重问题,src/problem3/problem3_alns.py默认phase=b；未重新运行联合搜索,启动联合搜索及按需通信几何计算；运行副本缓存与结果写runs
++C14,python run.py problem3_vns --raw-dir $env:UAV_RAW_DIR,运行Q3正式VNS分支,static_only,原始输入及Q1航段和Q2运输解和Q3精英池/通信输入齐全；不是读取ALNS最优解续算；缓存受信,src/problem3/problem3_vns.py；仅归档结构与模块导入检查通过；未运行20轮VNS,启动VNS和通信评价；运行副本缓存及新结果写runs
++C15,python run.py problem4_full_enumeration --raw-dir $env:UAV_RAW_DIR,重新枚举分区与筛选Pareto集合,static_only,Q3干净VNS表及综合提交表通信区间和所需原始数据齐全；保持Q3固定时序,src/problem4/problem4_full_enumeration.py；Phase3复核1008项资源计数但未重跑完整分区枚举,在runs生成完整候选及Pareto表；不属于本轮已验证报告重算
++C16,python run.py problem3_segment_communication_cache --raw-dir $env:UAV_RAW_DIR -- --full --workers 1,完整重建通信几何缓存,static_only,原始数据和DEM及Q1航段和Q2正式解和Q3精英池齐全；需另评估计算预算,docs/running.md；原manifest累计部分缓存耗时5606.644827秒不是当前机器完整重建预测,启动大量通信几何计算并写runs缓存与manifest；本阶段未执行
++C17,python run.py problem3_segment_communication_cache --raw-dir $env:UAV_RAW_DIR,执行默认通信缓存benchmark,static_only,与完整缓存相同的数据依赖；默认会计算10条最长航段；不是只读缓存校验,src/problem3/problem3_segment_communication_cache.py；docs/running.md；未执行,计算通信几何并生成运行产物；不能作为轻量读取命令
++C18,python run.py plot_problem3_final_results --raw-dir $env:UAV_RAW_DIR,根据归档VNS解绘制联合调度与通信结果图,static_only,Q3干净20运输架次结果及综合提交表Q3通信区间与原始DEM/节点数据齐全；公开图片另需授权,scripts/problem3/plot_problem3_final_results.py接口及导入检查通过；docs/figures.csv列已存在原图；本轮尚未执行此绘图入口,只读既有结果并在runs生成图片；不重做ALNS/VNS；不等于重新通信审计
++C19,python run.py plot_problem1_3d_routes --raw-dir $env:UAV_RAW_DIR,绘制Q1既有航段的三维地形航迹,static_only,Q1正式航段与原始DEM齐全；中文字体可用；派生图片授权待审,scripts/problem1/plot_problem1_3d_routes.py；docs/figures.csv；未执行新绘图,读取归档并在runs生成图及说明；不运行优化
++C20,python run.py plot_alns_5seed_convergence,按归档五种子轨迹绘制收敛图,static_only,experiments/problem2/results/alns_5seed_runs中五份trace齐全；中文字体可用；实验归档仍待公开审核,scripts/problem2/plot_alns_5seed_convergence.py；未重新执行绘图,只读CSV并在runs生成图片；不启动五种子搜索
++C21,.\.venv\Scripts\python.exe -B run.py problem3_posthoc_weight_tradeoff,对有限归档解进行权重后评价,static_only,冻结Q3结果与已完成100轮case_1工作簿齐全；可选中断日志影响source_audit记录；不是重新求解实验,experiments/README.md；experiments/problem3/problem3_posthoc_weight_tradeoff.py；本阶段未执行,仅写新的权重评分及审计表至runs；不重建几何或搜索
++C22,python run.py problem3_weight_experiment --raw-dir $env:UAV_RAW_DIR,Q3独立权重重新求解实验,blocked,历史case_1独立缓存及其manifest缺失；不得以正式缓存替换；整组实验历史未完成,docs/phase3_dependencies.csv；experiments/README.md；docs/phase3_report.md,依赖解决后会启动长实验；本阶段不执行
++C23,python run.py problem2_cpsat_resource_refinement --raw-dir $env:UAV_RAW_DIR,Q2固定任务资源配置CP-SAT扩展,static_only,可选OR-Tools依赖已安装；扩展输入problem2_alns_improved_result.xlsx及原始数据齐全；先评估求解成本,experiments/problem2/problem2_cpsat_resource_refinement.py；未执行；不是正式Q2主方法,调用CP-SAT并生成扩展结果至runs；不改正式ALNS归档
++C24,python run.py fill_q3_submission --raw-dir $env:UAV_RAW_DIR --template $env:UAV_TEMPLATE,重新校核并填写Q3提交页,static_only,明确提供有权使用的模板；Q3最终解及受信缓存与全部通信依赖齐全,docs/running.md；scripts/problem3/fill_q3_submission.py；尚未端到端执行,可能执行耗时通信复核；只填Q3页并另写runs副本；不代表生成综合表全部内容
++C25,"& $uavPython -B run.py problem1_segment_preprocessing --raw-dir $uavRaw --run-dir ""$uavChain/q1_segments""",新输入链的Q1航段步骤,static_only,先执行docs/running.md变量及Copy-UavStageInput函数定义；uavRaw替换合法实际目录；uavChain位于新runs子目录,docs/running.md；新增连续输入示例未执行,计算并输出新航段；成功后另复制输入副本和记录SHA
++C26,"& $uavPython -B run.py problem1_max_safe_payload --raw-dir $uavRaw --input-dir $uavInputs --run-dir ""$uavChain/q1_payload""",新输入链的Q1载荷步骤,static_only,已成功执行上一航段步骤并用Copy-UavStageInput登记副本；当前输入根中应有新航段,docs/running.md；未执行此连续流程,计算载荷并写新runs；缺失的新输入仍可能触发默认冻结回退故必须检查前步成功
++C27,"& $uavPython -B run.py problem1_batch_optimization --raw-dir $uavRaw --input-dir $uavInputs --run-dir ""$uavChain/q1_batches""",新输入链的Q1集合划分,static_only,新航段和载荷均成功复制到uavInputs；原始需求可用；Gurobi完整模型许可和计算预算已另行确认,docs/running.md；仅小型建模已验而此完整求解未执行,构建候选并调用Gurobi；输出到新runs
++C28,"& $uavPython -B run.py problem2_final_run_and_visualization --raw-dir $uavRaw --input-dir $uavInputs --run-dir ""$uavChain/q2_formal""",新输入链的正式Q2 ALNS,static_only,新Q1航段和组批已逐步复制且哈希一致；参数保持1000次与种子20260927及正式权重,docs/running.md；正式参数静态核对通过而连续求解未执行,启动长搜索并写runs；不能算作Phase4实际复现
++C29,"& $uavPython -B run.py problem3_core --raw-dir $uavRaw --input-dir $uavInputs --run-dir ""$uavChain/q3_communication""",新输入链的Q3运输通信检查,static_only,Q2新解及Q1航段已复制；原始通信和DEM及其他原始输入齐全,docs/running.md；src/problem3/problem3_core.py入口为run_step3；未重新执行,计算通信中断区间并写runs；不属于单纯归档读取
++C30,"& $uavPython -B run.py problem3_relay --raw-dir $uavRaw --input-dir $uavInputs --run-dir ""$uavChain/q3_coverage""",新输入链的中继覆盖计算,static_only,新运输通信检查表已复制到uavInputs；中继与链路原始参数完整,docs/running.md；src/problem3/problem3_relay.py；未执行,生成中继覆盖表至runs；可能存在较大几何计算成本
++C31,"& $uavPython -B run.py problem3_baseline --raw-dir $uavRaw --input-dir $uavInputs --run-dir ""$uavChain/q3_baseline""",新输入链的Q3基线构造,static_only,新通信检查和覆盖表已成功复制；所有原始依赖齐全,docs/running.md；入口映射为run_baseline；未执行,计算基线并写新runs；不修改冻结基线
++C32,"& $uavPython -B run.py problem3_alns --raw-dir $uavRaw --input-dir $uavInputs --run-dir ""$uavChain/q3_elite"" -- --phase a",新输入链的Q3精英池准备,static_only,上游新覆盖及基线等输入已成功复制；原始通信数据与DEM完整,docs/running.md；ALNS参数解析器支持phase=a；未执行,计算与导出精英候选池及审计信息至runs
++C33,"& $uavPython -B run.py problem3_segment_communication_cache --raw-dir $uavRaw --input-dir $uavInputs --run-dir ""$uavChain/q3_cache"" -- --full --workers 1",基于新输入完整生成通信缓存,static_only,前述新输入全部成功复制且SHA一致；计算预算另评估；不要将旧缓存直接视为适配新输入,docs/running.md；未执行；旧部分缓存5606.644827秒不代表本机重建时间,计算并保存新缓存；跨进程使用前读取新文件实际SHA
++C34,"& $uavPython -B run.py problem3_vns --raw-dir $uavRaw --input-dir $uavInputs --run-dir ""$uavChain/q3_vns"" --cache-file $uavCache --cache-sha256 $uavCacheHash",基于新输入与显式受信缓存运行VNS,static_only,新输入链和缓存已真实成功完成；uavCacheHash来自该实际文件；仅信任已知生成来源,docs/running.md；尚未执行20循环VNS或整条新输入流水线,启动VNS和联合通信评价；新结果及运行缓存写runs
++C35,"& $uavPython -B run.py problem3_alns --raw-dir $uavRaw --input-dir $uavInputs --run-dir ""$uavChain/q3_alns"" --cache-file $uavCache --cache-sha256 $uavCacheHash -- --phase b",基于新输入独立运行Q3 ALNS分支,static_only,新输入链和缓存已成功完成；默认500次参数保持；原暖启动权重问题未修复,docs/running.md；不是VNS前置步骤；尚未执行,启动独立ALNS长搜索；结果写另一runs目录
++C36,Copy-UavStageInput <Stage> <Problem> <Filename>,连续示例的中间输入归集函数,static_only,按docs/running.md先定义函数和变量；尖括号是说明参数需要替换；只接受已成功生成且尚未归集的文件,docs/running.md函数体静态阅读；整条复制归集流程未实际执行,复制到本次runs下inputs；验证源与副本SHA；拒绝覆盖并追加input_copies.csv
+--- /dev/null
++++ b/docs/figures.csv
+@@ -0,0 +1,16 @@
++figure_id,problem,title,source_path,sha256,attachment_duplicate,paper_figure,paper_media,association_evidence,generation_script,formal_data,limitations,authorization_status,publication_status,selected_for_readme
++F01,problem1,DEM三维地形,20260923 huaweibei/dem_3d.png,ea916b21fe398f7bf70eef076cbd6e505b91085ad12bee3721f4d3f753bd6b84,附件/论文图片集/图2a.png,图2三维子图,word/media/image6.png,附件与开发版SHA相同；最终论文题注及结构指纹对应；未逐项目视审核,scripts/utilities/plot_dem.py,dependencies.csv:DEM,地形背景图而非运输航迹；DEM派生使用许可待审,pending_review,not_copied,true
++F02,problem1,O01至各服务区去程三维航迹与地形,20260923 huaweibei/问题一/results/figures_3d/O01至各服务区去程三维航迹与地形.png,86b7a4c739333c28c423e1e3d33cf7d5d7b047260fe709583a2b2a38effd0990,,未找到对应图号,,原开发目录存在；源码输出名及输入关系一致；不声明论文采用,scripts/problem1/plot_problem1_3d_routes.py,results/reference/problem1/segment_preprocessing.xlsx;dependencies.csv:DEM,仅绘制既有去程A-B-C-D航迹；本轮未重绘,pending_review,not_copied,true
++F03,problem2,正式ALNS收敛曲线,20260923 huaweibei/问题二/results/问题2_Z1优先_ALNS收敛曲线.png,6b9b128ee65cb86572206da88ef31abeb00f4a94427f703e5c89b57400f2070f,附件/论文图片集/图8.png,图8,word/media/image13.png,附件与开发版SHA相同；最终论文题注及结构指纹对应；未逐项目视审核,src/problem2/problem2_final_run_and_visualization.py,results/reference/problem2/problem2_Z1_priority_result.xlsx,正式1000次种子20260927；入口同时运行优化非纯绘图,pending_review,not_copied,true
++F04,problem2,五随机种子ALNS收敛曲线,20260923 huaweibei/问题二/results/alns_5seed_runs/问题2_ALNS_5种子收敛曲线.png,f55bc67a56abecce8d2d9a268d80993a10945d0d60e067be70fe12ef3c0a3f0f,附件/论文图片集/图9.png,图9,word/media/image14.png,附件与开发版SHA相同；最终论文题注及结构指纹对应；未逐项目视审核,scripts/problem2/plot_alns_5seed_convergence.py,experiments/problem2/results/alns_5seed_runs/seed_20260924_trace.csv;experiments/problem2/results/alns_5seed_runs/seed_20260925_trace.csv;experiments/problem2/results/alns_5seed_runs/seed_20260926_trace.csv;experiments/problem2/results/alns_5seed_runs/seed_20260927_trace.csv;experiments/problem2/results/alns_5seed_runs/seed_20260928_trace.csv,扩展稳定性实验；不等同正式单次结果或统计显著性能优势,pending_review,not_copied,true
++F05,problem2,共享电池任务占用与充电甘特图,20260923 huaweibei/问题二/results/问题2_Z1优先_共享电池甘特图.png,79810f000555e35e80b40f802132b7ebc3b8da0be7e268ccf5638a9338f6999a,附件/论文图片集/图13.png,图11,word/media/image16.png,附件与开发版SHA相同；最终论文题注及嵌图与原图目视对应,src/problem2/problem2_final_run_and_visualization.py,results/reference/problem2/problem2_Z1_priority_result.xlsx,附件文件名图13与论文图11不一致；充电尾段不等同任务完工时间,pending_review,not_copied,true
++F06,problem2,无人机任务甘特图,20260923 huaweibei/问题二/results/问题2_Z1优先_实体无人机甘特图.png,269bce8df4f006332edb8ecea8c6c14fae21e3724fde5ba0e9edd66b0475d62c,附件/论文图片集/图12.png,图12,word/media/image17.png,附件与开发版SHA相同；最终论文题注及结构指纹对应；未逐项目视审核,src/problem2/problem2_final_run_and_visualization.py,results/reference/problem2/problem2_Z1_priority_result.xlsx,机体占用与共享电池占用使用不同时间区间,pending_review,not_copied,true
++F07,problem2,货箱实际与期望送达时间对比,20260923 huaweibei/问题二/results/问题2_Z1优先_送达时间对比图.png,8b7d6de46826ae0b3b4424a70792d6007220fa1f50b1f8c312673a3f793da62f,附件/论文图片集/图11.png,图13,word/media/image18.png,附件与开发版SHA相同；最终论文题注及嵌图与原图目视对应,src/problem2/problem2_final_run_and_visualization.py,results/reference/problem2/problem2_Z1_priority_result.xlsx,附件文件名图11与论文图13不一致,pending_review,not_copied,false
++F08,problem3,G01直接通信覆盖区域,20260923 huaweibei/问题三/results/problem3_g01_communication_region.png,d9664eb45d40ed330b5a49851c2ae1a8f107463964cdcfe9451437a80e4bd45f,附件/论文图片集/图14.png,图14,word/media/image19.png,附件与开发版SHA相同；最终论文题注及结构指纹对应；未逐项目视审核,scripts/problem3/plot_g01_communication_region.py,dependencies.csv:DEM;dependencies.csv:RAW_LINK;dependencies.csv:RAW_NODES,假定AGL高度下逐点链路计算；不能当作所有实际航迹的解析通信保证,pending_review,not_copied,true
++F09,problem3,VNS局部强化收敛曲线,20260923 huaweibei/问题三/results/figures/problem3_vns_convergence.png,f9e578244f3d08631e3278438ebe0ce637685a806004ca08b483693d95add703,附件/论文图片集/图16.png,图16,word/media/image21.png,附件与开发版SHA相同；最终论文题注及结构指纹对应；未逐项目视审核,scripts/problem3/plot_problem3_final_results.py,results/reference/problem3/problem3_vns_20cycles.xlsx,VNS从Q2运输基因恢复；不能标为ALNS最优解直接续算,pending_review,not_copied,true
++F10,problem3,运输无人机全过程通信保障时序,20260923 huaweibei/问题三/results/figures/problem3_communication_timeline.png,c766bd9bfda4797f2b07bf715001d98cbca009b29a62c14446f15bccb522df71,附件/论文图片集/图17.png,图17,word/media/image22.png,附件与开发版SHA相同；最终论文题注及结构指纹对应；未逐项目视审核,scripts/problem3/plot_problem3_final_results.py,results/reference/problem3/problem3_vns_20cycles.xlsx;results/reference/submission/结果提交.xlsx,基于Q3_通信保障归档区间；采样及边界细化检查非任意连续时刻解析证明,pending_review,not_copied,true
++F11,problem3,运输与中继联合任务调度甘特图,20260923 huaweibei/问题三/results/figures/problem3_joint_schedule_gantt.png,685aae5a55699f1d64a711eabc431cf4d6de241baabd6123132c1a4236439c03,附件/论文图片集/图18.png,图18,word/media/image23.png,附件与开发版SHA相同；最终论文题注及结构指纹对应；未逐项目视审核,scripts/problem3/plot_problem3_final_results.py,results/reference/problem3/problem3_vns_20cycles.xlsx;results/reference/submission/结果提交.xlsx,干净附件结果为20运输架次及3中继架次；本轮未重做通信审计,pending_review,not_copied,true
++F12,problem3,运输中继协同部署,20260923 huaweibei/问题三/results/figures/problem3_final_relay_deployment.png,763ec16fc60776109f985d60f1e5e0536b8a27729590b79904b06ee7cfbf4ed8,附件/论文图片集/图19.png,图19,word/media/image24.png,附件与开发版SHA相同；最终论文题注及结构指纹对应；未逐项目视审核,scripts/problem3/plot_problem3_final_results.py,results/reference/problem3/problem3_vns_20cycles.xlsx;results/reference/submission/结果提交.xlsx;dependencies.csv:DEM;dependencies.csv:RAW_NODES,DEM及位置派生图片权限待审,pending_review,not_copied,true
++F13,problem4,候选分区资源与均衡分布,附件/论文图片集/图21.png,8b6c8bc6c05d0ca7719b1e53ffd6a0f726c59a907868b9d1c3883027fca37f63,,图21,word/media/image26.png,最终论文题注及嵌图与附件原图目视对应,未找到生成脚本,results/reference/problem4/problem4_K2_all.xlsx;results/reference/problem4/problem4_K3_all.xlsx;results/reference/problem4/problem4_K2_pareto.xlsx;results/reference/problem4/problem4_K3_pareto.xlsx;results/reference/problem4/problem4_final_selection_analysis.xlsx,图中标注K2-032及K3-007；二维投影不能替代14维Pareto判定,pending_review,not_copied,true
++F14,problem4,K2代表方案逐组资源配置,附件/论文图片集/图23.png,51bdea5180a09539bf2d2290ff86666b2feabb90459da0456eb8713f4de21192,,图23,word/media/image29.png,最终论文题注及结构指纹对应；未逐项目视审核,未找到生成脚本,results/reference/problem4/problem4_final_paper_results.xlsx,固定问题三时序的资源分析；不表示分区降低完工时间,pending_review,not_copied,false
++F15,problem4,K3代表方案逐组资源配置,附件/论文图片集/图24.png,4439aee20ea4d6948a9e7d46cc5a995cd6b871802b7ecf90e029b92647ed2c57,,图24,word/media/image30.png,最终论文题注及结构指纹对应；未逐项目视审核,未找到生成脚本,results/reference/problem4/problem4_final_paper_results.xlsx,固定问题三时序的资源分析；不表示分区降低完工时间,pending_review,not_copied,false
+--- /dev/null
++++ b/docs/figures.md
+@@ -0,0 +1,49 @@
++# 图片来源与展示候选
++
++当前没有将原论文或实验图片复制到公开候选文件中，也没有嵌入指向原竞赛目录的图片链接。图片、DEM 及其派生材料的再分发权限尚未确认；README 先展示已核验的数值表，图片待完成授权与隐私审核后再补充。没有新绘制实验图片，也没有为了配图启动优化。
++
++## 来源依据
++
++本次只读核对了用户确认的最终论文，其来源及 SHA-256 见 [formal_versions.json](formal_versions.json) 的 `paper_basis`。读取 DOCX 的正文题注、`document.xml.rels` 和嵌图关系，同时对原开发目录与 `附件/论文图片集/` 的 PNG 计算 SHA-256。
++
++[figures.csv](figures.csv) 登记 15 张代表图片：来源路径以原竞赛工作目录为基准，仅用于溯源，不是仓库相对链接；`generation_script` 和 `formal_data` 列以发布候选根目录为基准。原始数据来源用 `dependencies.csv` 的依赖 ID 标记。嵌图 `word/media/...` 是论文内部标识，不表示已将论文或图片加入仓库。
++
++DOCX 内图片经过缩放或重新编码，通常与外部 PNG 字节不同。证据分为三类：
++
++- **原图字节对应**：开发目录 PNG 与附件图片的 SHA-256 完全相同。
++- **题注与结构对应**：依据最终论文嵌图位置、题注及缩放后的图像结构指纹匹配；不声称逐字节一致，也不代替像素内容审核。
++- **目视对应**：本轮实际打开原图及 DOCX 嵌图，比对共享电池图、送达时刻图与 Q4 Pareto 图，确认内容对应。其他图片未逐张完成目视隐私审核。
++
++已扫描附件中的 28 张 PNG 文本元数据；其中 26 张包含 Software 文本元数据，未检出 Windows 绝对路径、邮箱或手机号模式。这只是文本元数据检查，不证明图中不存在个人信息，也不表示拥有公开授权。最终论文存在作者、最后修改者等 Office 元数据，未将其私人值写入本清单。
++
++## 建议展示顺序
++
++| 展示内容 | 论文位置 | 数据与作用 | 当前限制 |
++|---|---|---|---|
++| DEM 三维地形 | 图 2 的三维子图 | 展示山区高程背景 | DEM 及派生图片权限待审；图 2 不是三维运输航迹图 |
++| O01 至服务区三维航迹 | 未找到对应论文图号 | Q1 正式航段与 DEM，展示 A–B–C–D 折线路径 | 有独立绘图脚本，未验证本轮重绘 |
++| 正式 ALNS 收敛、无人机/共享电池甘特图 | 图 8、12、11 | Q2 正式 1000 轮 Z1 优先结果 | 正式入口同时执行优化，不能当作纯绘图命令 |
++| 五随机种子收敛图 | 图 9 | 已归档种子轨迹的扩展实验 | 与正式单种子解区分；不能仅凭图声称算法显著优于其他方法 |
++| G01 直接通信覆盖 | 图 14 | DEM 与通信链路逐点计算 | 图中为假定 AGL 高度的网格测试，不是所有实际航迹的连续保障证明 |
++| VNS 收敛、通信时序、联合甘特与中继部署 | 图 16–19 | 干净 VNS 结果及综合提交表 Q3 通信区间 | 采用原采样/边界细化口径；本轮未重做通信审计 |
++| Q4 资源与均衡的 Pareto 投影 | 图 21 | 完整候选及 Pareto 表，标注 K2-032/K3-007 | 现有源码中未找到该图的生成脚本；二维投影不能替代完整 Pareto 判定 |
++| 两个代表方案的资源配置 | 图 23、24 | 最终方案逐组资源表 | 图已存在，生成脚本未找到；分区固定 Q3 时序 |
++
++## 已确认的编号差异
++
++不能直接将附件文件名当作最终论文图号：
++
++| 原附件文件 | 最终论文实际图号 | 内容 |
++|---|---|---|
++| `附件/论文图片集/图13.png` | 图 11，`word/media/image16.png` | 共享电池任务占用与充电甘特图 |
++| `附件/论文图片集/图11.png` | 图 13，`word/media/image18.png` | 货箱实际与期望送达时间对比 |
++
++两项已结合题注、开发版同字节图片和嵌图目视核对。原文件保持不变，不改名纠正历史归档。
++
++Q4 论文图 20–26 在附件中可定位；本清单选取图 21、23、24 展示技术价值。现有 `problem4_service_zone_graph.py` 能生成关联图，但其已存 PNG 与论文图 20 并非同字节文件；没有据此声称它生成了全部 Q4 论文图。
++
++## 公开前处理
++
++所有登记图片的 `authorization_status` 均为 `pending_review`，`publication_status` 均为 `not_copied`。公开审核需要同时确认图片作者/合作贡献、底层数据或地图的派生使用许可、像素中的个人信息及 PNG/PDF 元数据。来源可追溯与有权再分发是两个独立条件。
++
++授权通过后，可以在另一次明确的发布整理中复制获准图片、记录副本哈希并补充 README 引用。若需脱敏，应生成另有溯源的新展示副本，保留原图及冻结结果；不能覆盖原件。缺失生成脚本的图片仍需说明这一限制。完整待审材料继续见 [review_required.csv](review_required.csv)，本文件没有代替或更改历史审核状态。
+--- /dev/null
++++ b/docs/known_issues.md
+@@ -0,0 +1,52 @@
++# 已知问题与复现边界
++
++本文记录论文表述、实际代码与历史实验之间的差异，以及尚未完成的验证。整理阶段保留数学模型、正式参数和搜索逻辑，不用文档改写掩盖这些差异，也不以修复问题为由覆盖冻结结果。正式版本见 [formal_versions.json](formal_versions.json)，运行边界见 [running.md](running.md)，实验分类见 [experiments/README.md](../experiments/README.md)。
++
++## 1. 模型与目标口径
++
++| 编号 | 已核对的差异或限制 | 对解释与后续工作的影响 |
++|---|---|---|
++| K01 | Q2 论文给出 min-max 归一化一般式；`problem2_alns_improved.py` 实际按固定参考尺度计算 `Zk / sk`。`s1` 来自货箱优先系数与期望时间乘积之和，其他尺度来自 Q1 种子解码，并带数值下界保护 | 文档按实际实现说明。若改为 min-max，会改变目标评价和搜索轨迹，须作为另一个明确实验，不能作为工程修复 |
++| K02 | Q2 论文的 Z1 求和排除首批保障货箱；正式代码对全部已配送货箱累加“优先系数 × 超出期望时刻的秒数”，硬截止可行性另行检查 | 两种求和集合不能在未经论证时视为完全等价。归档正式 Z1=0 只能说明该归档解的代码指标，不能证明一般等价 |
++| K03 | NSGA-II 的 `evaluate_objectives()` 仅对没有硬截止条件的货箱累加 Z1，与正式 ALNS 的范围不同 | 不直接比较 Z1 或据此给出算法排名；未来比较需先明确指标口径和预算，保留当前实现与归档 |
++| K04 | Q3 通信检查依赖数值采样和状态边界细化；LEVEL1 是搜索评价，不能替代最终 LEVEL2 标准检查 | 归档“未覆盖时长为0”和13项 PASS 是原检查精度下的结果，不是任意连续时刻通信成立的解析证明。Phase 3 读取了标记，没有重新执行完整通信审计 |
++| K05 | Q4 固定 Q3 运输与中继时序，通过任务块分区和资源核算比较独立任务组；分区可能复制中继任务 | K2-032/K3-007 的整体完工时间仍为 6985.31006777659 s，不能宣称分区缩短工期。两方案均有运输 UAV、电池和中继 UAV 库存缺口，不是现有库存下已全部可执行的方案 |
++
++代码依据：[Q2 评价与尺度](../src/problem2/problem2_alns_improved.py)、[NSGA-II 评价](../experiments/problem2/problem2_nsga2.py)、[Q3 通信核心](../src/problem3/problem3_core.py)、[Q4 资源核算](../src/problem4/problem4_group_scheduler.py)及[最终方案报告](../src/problem4/problem4_final_paper_results.py)。论文与代码的变量对应见 [methodology.md](methodology.md)。
++
++## 2. 历史版本与搜索配置
++
++| 编号 | 已核对的差异或限制 | 当前处理 |
++|---|---|---|
++| K06 | Q2 正式入口是 `problem2_final_run_and_visualization.py`：1000次、种子20260927、权重 `(0.55,0.15,0.15,0.15)`；扩展 `problem2_alns_final.py` 实际为1500次、均衡权重 | 保留两个入口，扩展放在 experiments；不能按文件名中的 final 判断正式性 |
++| K07 | Q2 五种子稳定性实验沿用均衡权重；首个种子复用已有收敛记录，汇总中 `Final_Solution_Detail_Saved=False` | 不能称为正式延误优先配置的五次复现，也不能称该汇总工作簿含五个完整最终解明细 |
++| K08 | Q3 `PhaseBConfig.iterations=500`，但 `run_phase_b()` 的旧注释及 CLI help 仍写100次 | 以实际配置和归档 `Summary/Iterations` 判断运行预算。文档阶段不更改源码；后续可以单独修正文案，不能悄悄改成100次 |
++| K09 | Q3 `FORMAL_WARM_F` 按四个0.25权重计算，默认搜索权重为 `(0.55,0.15,0.15,0.15)`；固定 F 参与初温和改善判断 | 保留现状。不能把两个权重体系的 F 差值当作性能提升；改动可能影响搜索轨迹，需另行确认与实验 |
++| K10 | 正式 Q3 VNS 从 Q2 工作簿恢复运输基因，复用 Q3 联合评价与精英池；它不直接读取 `problem3_alns_final.xlsx` 的最优运输解接续搜索 | 技术路线展示为共享输入和评价器的 ALNS/VNS 分支。独立权重实验中存在另一个 ALNS 后接 VNS 的驱动，不能据此反推正式入口 |
++| K11 | Q3 最终工作簿第一条检查标题为“运输方案与问题二正式结果完全一致”，但 VNS 包含架次内访问顺序调整；检查详情仅列架次、覆盖与硬约束 | 展示时报告20条有效运输架次及对应检查结果，不把该标题解释为所有路径和访问顺序逐项相同 |
++
++代码依据：[Q2 正式入口](../src/problem2/problem2_final_run_and_visualization.py)、[Q2 扩展包装器](../experiments/problem2/problem2_alns_final.py)、[Q3 ALNS](../src/problem3/problem3_alns.py)、[Q3 VNS](../src/problem3/problem3_vns.py)。上述差异均属静态核对；本轮没有重新运行搜索来估计其影响。
++
++## 3. 依赖、缓存与未完成实验
++
++| 编号 | 状态与证据 | 后续处理 |
++|---|---|---|
++| K12 | 五份原始 Excel、DEM 和原提交模板不在公开候选数据区；本地只读外部输入曾通过验证，公开/再分发授权仍待确认 | 通过显式 `--raw-dir` 或 `--template` 提供有使用权限的材料；不能声称公开克隆即可完整运行 |
++| K13 | 历史“结果提交模板_问题三已填写.xlsx”缺失。现映射到综合提交表的 `Q3_通信保障`：215条区间，104条中继区间与 Q4 存档对应 | 映射有逐项核对依据，但不表示存在同名字节原件。不得伪造模板、改表格内容或用文件别名隐藏来源 |
++| K14 | Phase 2 `dependencies.csv` 的 `P2_IMPROVED` 把 CP-SAT 输入标为 improved 结果；当前源码 `SOURCE_FILE` 实际读取 `problem2_alns_repair_optimized_result.xlsx` | 以源码和运行时输入来源为准；该表作为历史快照保留，本条明确补充映射差异。CP-SAT 是固定结构的资源精修，非正式主流程 |
++| K15 | 冻结 Q3 缓存覆盖135/210条有向航段、240个候选，剩余75条按需计算；原签名未包含全部原始输入字节/参数 | Phase 3 在 IO 层增加11项输入完整哈希核验，并保留历史模块身份。兼容核验通过不等于缓存全量完成；不因缓存存在就省略来源校验 |
++| K16 | 未知 pickle 默认拒绝。新生成的非冻结缓存跨进程复用需要显式可信来源和 SHA-256 | 哈希用于识别文件，不能证明任意来源的 pickle 安全。不得为通过验证加载来源不明的缓存 |
++| K17 | Q3 独立权重重新求解未完整完成；当前副本缺历史 case_1 独立通信缓存及 manifest | 列为阻塞，不能默默改用正式缓存。已有100轮 case_1 ALNS 结果和458次中断证据不代表四组 ALNS+VNS 完成 |
++| K18 | Q3 post-hoc 对已归档候选重新评分：5条最终检查记录、4个去重目标向量、2个非支配向量 | 四种权重选中同一候选只说明有限候选池上的再评分结果，不是四次独立优化结论 |
++| K19 | Q4 旧论文表生成器在缺少日志时可使用历史40.395秒回退值 | 不把它作为当前机器实测耗时。Phase 3/4 新测试耗时以各阶段实际记录为准 |
++| K20 | 全新 Q3 链还需生成或提供 `problem3_baseline.xlsx`：Phase A 的 `compare_with_baseline()` 读取其 `Objective` 表；精英池保留固定 `BASELINE_CANDIDATE_IDS`，ALNS/VNS 暖启动对归档目标或候选作专项断言 | 新生成的 Q2 可行解不保证满足这些断言。路径能够串联不等于支持任意新输入的通用重新求解；运行说明列出基线依赖，当前保留断言和原算法，不为跑通而放宽检查 |
++
++缓存与输入的工程状态见 [phase3_dependencies.csv](phase3_dependencies.csv)及 [Phase 3 报告](phase3_report.md)。归档缓存的累计预处理时间约93.44分钟，仅是历史记录；不能保证当前机器完整重建的时间。权重实验范围见 [实验说明](../experiments/README.md)。
++
++## 4. 验证结论的边界
++
++Phase 3 已验证15项轻量测试、41个模块导入、36份冻结正式结果的完整性，以及 Q4 的1008项资源计数。Gurobi 通过了小规模真实建模函数检查，没有执行完整集合划分优化；模型可创建不等于任何机器都有适用完整实验的许可证。
++
++尚未完成的工作包括 Q1 完整候选与三阶段求解、Q2 正式1000次及扩展搜索、Q3 ALNS/VNS和完整通信重审、Q4完整枚举、完全空白环境安装及跨系统验证。现有虚拟环境复用了本机科学计算依赖。Phase 4 的回归和文档检查结果另见 [phase4_report.md](phase4_report.md)，不能外推为完整优化复现。
++
++正式结果中的 `OPTIMAL`、`PASS` 和耗时均保留归档语境。优化结果汇总、轻量复核及完整重新求解应分别标注；没有新实验时，不新增性能提升、显著性或逐步搜索轨迹一致的结论。
+--- /dev/null
++++ b/docs/methodology.md
+@@ -0,0 +1,222 @@
++# 数学模型与算法实现
++
++本文解释四个问题在当前代码中的实现及依赖关系。依据为已确认的最终论文、冻结工作簿和发布副本源码；论文身份及历史哈希见 [formal_versions.json](formal_versions.json)，原文件映射见 [provenance.csv](provenance.csv)。论文没有随仓库公开。本文件使用论文中的货箱、架次、服务区、机型、优先序列 $\sigma$ 和目标 $Z_k$、$Y_k$ 等术语；存在论文与实现差异时明确列出，不改写算法或归档结果。
++
++## 1. 四个问题的关系
++
++问题一确定地形条件下的单点运输能力和组批；问题二增加多点访问、实体无人机与共享电池调度；问题三在运输方案上加入通信中断识别、中继配置和联合评价；问题四固定问题三的任务及绝对时刻，分析资源不能跨组共享时的分区代价。
++
++```mermaid
++flowchart TD
++    R[原始 Excel 与 DEM] --> P[航段预处理与最大安全载荷]
++    P --> Q1[问题一：候选批次与集合划分]
++    Q1 --> Q2[问题二：ALNS 与确定性资源解码]
++    P --> C[通信链路与中继候选计算]
++    Q2 --> W[恢复 Q2 运输基因与优先顺序]
++    C --> E[覆盖表、精英池与航段通信缓存]
++    W --> J[运输与中继联合评价]
++    E --> J
++    J --> A[问题三 ALNS 分支]
++    J --> V[问题三 VNS 分支]
++    V --> F[冻结的 20 架次 VNS 结果]
++    F --> Q4[问题四：分区枚举、资源核算与 Pareto 筛选]
++    S[综合提交表中的通信保障区间] --> Q4
++```
++
++图中的 ALNS 与 VNS 共用评价、解码和缓存机制。正式 VNS 从 Q2 工作簿恢复运输基因，并不读取 ALNS 最优解作为初解；论文的“ALNS 全局搜索—VNS 局部强化”是方法框架描述，不能直接当作现有入口的串行文件依赖。
++
++## 2. 问题一：单点往返与集合划分
++
++### 2.1 航段、载荷与能源约束
++
++[航段预处理](../src/problem1/problem1_segment_preprocessing.py)用 `pyproj.Geod(ellps="WGS84")` 计算节点间测地距离。DEM 地形取样则对经纬度平面中的直线栅格化，使用 `all_touched=True`，纳入线段穿过或触及的像元；这两个几何步骤不能混称为同一种距离算法。计划巡航海拔为沿线最高地形高程加 50 m，由端点作业高度推导有向爬升和下降高度，输出 16×16 航段矩阵。
++
++[最大安全载荷](../src/problem1/problem1_max_safe_payload.py)沿用载荷相关的等效航程、水平飞行能耗与爬升附加能耗。单点往返的去程携带批次载荷，返程空载；模型没有另外加入下降能耗回收。对机型 $g$、服务区 $i$，最大安全载荷满足
++
++$$
++q_{gi}^{\max}=\max\left\{q\in[0,Q_g]:E_{gi}^{T}(q)\leq(1-\rho_g)E_g^{\mathrm{use}}\right\}.
++$$
++
++$Q_g$ 为机型额定载荷（kg），$\rho_g$ 为返航安全余量比例，$E_g^{\mathrm{use}}$ 为可用能源（kWh）。实现先检查满载、空载边界，再二分求解，并用 1001 个采样点检查往返能耗的单调非减性；该采样检查本身不是一般情形的解析证明。
++
++### 2.2 可行候选与字典序优化
++
++货箱不可拆分，同一批次只服务一个服务区。对服务区 $i$ 的货箱集合 $M_i$、机型集合 $G$，候选 $\omega=(i,B,g)$ 必须满足 $B\subseteq M_i$、$B\neq\varnothing$、批次质量不超过 $q_{gi}^{\max}$、批次体积不超过机型容积。DFS/回溯结合质量、体积上界剪枝枚举候选，归档算例共有 19525 个。
++
++令 $x_\omega$ 表示是否采用候选，$y_{b\omega}$ 表示货箱 $b$ 是否包含在该候选中。集合划分约束为
++
++$$
++\sum_{\omega\in\Omega}y_{b\omega}x_\omega=1\quad(\forall b\in M),\qquad x_\omega\in\{0,1\}.
++$$
++
++质量、容积和往返能量可行性已在候选生成阶段处理。主模型因此是二元整数线性规划；非线性载荷能耗先计算成候选常量，并未直接交由 Gurobi 求解非线性模型。
++
++按论文记号，$C(x)$、$E(x)$、$T(x)$ 分别为架次数、总运输能耗和累计作业时间：[集合划分代码](../src/problem1/problem1_batch_optimization.py)依次最小化三者，锁定第一阶段架次数后优化能耗，再保持能耗最优值的数值容差优化时间。第三阶段实际约束为 $E(x)\leq E^*+10^{-7}$ kWh，论文中的 $E(x)=E^*$ 是理想化写法。各阶段要求 Gurobi 返回 `OPTIMAL`；最优性仅针对已构造的候选模型及数值设置。
++
++累计作业时间包括准备、逐箱装载、飞行、交接等架次时间之和，不考虑实体无人机并行执行。因此归档的 18 架次、80 箱、59.1286907835 kWh、32776.0157489162 s，不能与问题二、三的最大完工时间直接作快慢比较。
++
++**输入与输出。** 输入为节点、货箱、机型 Excel 和 DEM；依次输出 `segment_preprocessing.xlsx`、`problem1_max_safe_payload.xlsx`、`problem1_batch_optimization.xlsx`。正式集合划分直接生成候选，不依赖 BFD 输出；BFD 和安全余量敏感性分析属于扩展实验。
++
++## 3. 问题二：运输方案搜索与资源调度解码
++
++### 3.1 解的表达及约束
++
++运输解由每架次的货箱集合 $B_n$、访问顺序 $\pi_n$、机型 $g_n$，以及架次优先序列 $\sigma$ 构成。每架次从调度中心出发，访问一个或多个服务区，完成交付后返回。沿途交付使后续航段载荷减少，逐段计算载荷相关能耗。
++
++[基础模型](../src/problem2/problem2_alns.py)与[资源解码](../src/problem2/problem2_alns_improved.py)分别检查货箱唯一配送、质量/体积上限、返航 SOC、首批物资硬时限及医疗物资硬时限。送达时间取服务区交接完成时刻，不能替换为到达时刻。
++
++解码严格按 $\sigma$ 处理架次。对每个架次，从兼容机型的实体无人机与满电共享电池组合中，选择能够最早开始的组合；无人机返航后可再次使用，电池需按分段 SOC 充电公式恢复至满电后才能再次使用。同型 UAV 与电池是独立资源，不是永久绑定的一对。
++
++### 3.2 四目标评价及论文口径差异
++
++论文用 $Z_1,Z_2,Z_3,Z_4$ 表示加权配送延误、最大完工时间、运输总能耗和运输架次数。对应实现为
++
++$$
++Z_1=\sum_{j\in M}\gamma_j\max(0,T_j-d_j^{\mathrm{exp}}),\quad
++Z_2=\max_n C_n,\quad
++Z_3=\sum_n E_n,\quad
++Z_4=|N_{\mathrm{flight}}|.
++$$
++
++$\gamma_j$ 为无量纲应急优先系数，所以 $Z_1$ 是加权秒数；$Z_2$ 单位为 s，$Z_3$ 为 kWh，$Z_4$ 为架次。论文的 $Z_1$ 求和集合写作排除首批保障货箱，代码实际遍历全部已配送货箱，同时另行检查首批硬时限。这里保留实际计算定义，不假定两种求和总是等价。
++
++论文给出 min-max 归一化一般式；实际实现以固定参考尺度 $s_k$ 计算 $\bar Z_k=Z_k/s_k$，并采用 $F_{\mathrm{eva}}=\sum_{k=1}^{4}\lambda_k\bar Z_k$。$s_1$ 来自货箱优先系数与期望时间乘积之和，$s_2,s_3,s_4$ 来自 Q1 种子经原资源解码得到的指标，并设数值下界保护；它们在本次搜索中保持不变，不随候选解动态重算。不同参考尺度下的综合分数不能直接横向比较。
++
++### 3.3 正式 ALNS 的实际流程
++
++正式入口为 [problem2_final_run_and_visualization.py](../src/problem2/problem2_final_run_and_visualization.py)，调用改进 ALNS 与[修复评价加速实现](../src/problem2/problem2_alns_repair_optimized.py)。正式参数为 1000 次、种子 20260927、权重 `(0.55, 0.15, 0.15, 0.15)`、初温 0.03、降温系数 0.98、目标破坏比例 8%–20%。
++
++```mermaid
++flowchart TD
++    A[Q1 种子、时限修复与初始优先顺序] --> B[初始调度顺序下降搜索]
++    B --> C[自适应选择破坏与修复算子]
++    C --> D[局部可行性筛选与候选完整评价]
++    D --> E[局部搜索与资源解码]
++    E --> F[模拟退火接受及历史最优更新]
++    F --> G{达到 1000 次}
++    G -->|否| C
++    G -->|是| H[最终顺序下降搜索与 16 项可行性检查]
++```
++
++| 环节 | 实际操作 |
++|---|---|
++| 7 类破坏 | 随机移除、最差贡献移除、相关性移除、整架次移除、迟延货箱移除、关键硬时限移除、资源拥堵移除 |
++| 4 类修复 | 贪心插入、Regret-2、Regret-3、时限优先插入；必要时建立新架次 |
++| 候选评价 | 快速代价排序后保留 Top-K=5，并额外保护最佳新架次、各可行机型、硬时限最早送达及匹配原组批的候选；因此完整评价次数不一定等于 5 |
++| 局部搜索 | 架次优先序交换、移位、紧急架次前移、合并、拆分、机型变更、路径 2-opt |
++| 评价缓存 | 用包含货箱、访问顺序、机型和架次顺序的签名复用完整评价 |
++| 自适应选择 | 按动态算子权重选择；依据历史最优、当前改善、接受或拒绝计分，分段更新 |
++
++Regret-2 比较次优与最优插入增量，Regret-3 累加第二、第三候选相对最优的增量差。候选接受依据完整资源解码的目标差 $\Delta F$：$\Delta F\leq0$ 时接受，否则以 $\exp(-\Delta F/\Theta)$ 接受；几何降温。局部搜索只有完整目标改善时才替换本轮破坏修复解，外层模拟退火负责接受部分较差候选。
++
++**输入与输出。** 读取 Q1 航段和正式批次、原始需求与机型资源表；输出架次、逐箱送达、UAV/电池时序、目标值、算子统计和搜索日志。归档正式解含 20 个运输架次、零加权延误、最大完工时间 6955.47652001904 s、运输能耗 65.6355317188857 kWh。1500 次的 `experiments/problem2/problem2_alns_final.py` 是扩展包装器，不能与正式运行混用。
++
++## 4. 问题三：运输与通信联合评价
++
++### 4.1 链路可达及连续保障的计算含义
++
++[通信模块](../src/problem3/problem3_communication.py)计算三维节点距离、自由空间传播损耗、DEM 遮挡附加损耗和双向链路门限。沿用论文公式
++
++$$
++L_{ij}^{\mathrm{path}}(t)=32.45+20\log_{10}f+20\log_{10}d_{ij}^{(3)}(t)+L_{\mathrm{obs}}b_{ij}(t).
++$$
++
++其中 $f$ 用 MHz，$d_{ij}^{(3)}$ 用 km，损耗单位 dB；双向门限取两个方向允许损耗的较小值。令 $A_{ij}(t)$ 为链路可达状态，论文中的连续保障要求为
++
++$$
++A_{uO}(t)+\sum_{r\in R(t)}A_{ur}(t)A_{rO}(t)\geq1.
++$$
++
++$O$ 在此表示固定网关 G01，不是运输调度中心 O01。运输爬升、巡航、下降和投送阶段需要直连或一跳中继形成的两跳通信；准备与装载阶段不要求通信。
++
++[轨迹与中断识别](../src/problem3/problem3_core.py)依据分段轨迹检查直连状态，形成需要中继保障的时空需求。[中继覆盖](../src/problem3/problem3_relay.py)生成水平候选及 50–300 m 离地悬停高度，筛选可连网关的候选，预计算需求覆盖，使用加权贪心与局部细化形成候选部署。联合搜索还使用固定的 240 候选精英池及按需计算的航段通信几何缓存。
++
++实现采用 1 s 确定性时间采样，检查阶段边界，对已检测到的状态变化进行 0.01 s 边界细化。归档“未覆盖时长为 0”表示该数值方法和容差下的检查结果，不构成任意连续时刻无中断的解析证明，不能排除采样网格间未检测到的短暂变化。
++
++### 4.2 联合调度与四目标
++
++[联合评价器](../src/problem3/problem3_alns.py)先解码运输，再生成通信需求、选择中继点并分配中继 UAV 和能源组件。中继计算包括准备、飞行、建链、服务、返航、周转以及能源恢复，检查资源时间冲突、续航和 SOC。运输机型、装载和时限约束继续复用问题二。
++
++沿用论文的 $Y_k$：$Y_1$ 为运输加权延误，$Y_2$ 为运输与中继最晚返航时刻的最大值，$Y_3$ 为两者能耗之和，$Y_4$ 为两者架次数之和。固定尺度为
++
++$$
++(S_1,S_2,S_3,S_4)=(6321600,\ 6985.307588,\ 68.808141175,\ 23),\qquad
++Y=\sum_{k=1}^{4}\lambda_k\frac{Y_k}{S_k}.
++$$
++
++代码及工作簿部分列仍命名为 `Z1`–`Z4`，在问题三上下文中对应上面的联合 $Y_k$；尤其能耗与架次数已经包含中继，不能按问题二的运输口径解读。
++
++### 4.3 ALNS 分支与评价分层
++
++问题三 ALNS 使用随机、相关性、最差贡献、整架次、连续航段和通信热点六类破坏；修复包括贪心、Regret-2、Regret-3、时限优先和通信感知插入。有限局部搜索尝试货箱移位、货箱交换、2-opt、机型变更，并包含优先序调整。搜索使用模拟退火、自适应算子权重、解评价缓存和航段几何缓存。
++
++评价划分为三个层次：
++
++| 层次 | 用途与限制 |
++|---|---|
++| LEVEL 0 | 低成本运输/通信代理排序，不执行完整轨迹通信审计 |
++| LEVEL 1 | 资源解码与中继选择，用于搜索候选比较；`verify_exact=False` 时通信检查字段为占位通过，不能据此宣称完成通信验证 |
++| LEVEL 2 | 调用标准通信复核，再检查资源和联合目标；仍属于上述采样、边界细化方法 |
++
++默认 ALNS 配置为 500 次、种子 20260925、权重 `(0.55,0.15,0.15,0.15)`。但 `FORMAL_WARM_F` 由四个 0.25 权重计算，并参与退火初温及改善比较。这是已记录的口径问题，可能影响搜索轨迹；没有在工程或文档阶段修复，不能把跨权重分数差当作性能提升。
++
++### 4.4 正式 VNS 分支
++
++[VNS 入口](../src/problem3/problem3_vns.py)调用 `load_baseline_warm_start()`，从 Q2 的 `Sorties` 页按 `Schedule_Order` 恢复运输基因，再用联合评价器重新解码。它不加载 Q3 ALNS 最终运输方案。参数为 20 个循环、种子 20260925、权重 `(0.55,0.15,0.15,0.15)`，邻域改善阈值 $10^{-6}$。
++
++| 邻域 | 代码中的精确定义 |
++|---|---|
++| N1 | 同一架次内交换两个服务区的访问位置 |
++| N2 | 同一架次内反转一段连续访问序列，即 2-opt 型操作 |
++| N3 | 将某架次内同一服务区的货箱整体移入另一架次，并调整访问顺序 |
++| N4 | 不同架次之间交换两个服务区对应的货箱组及访问节点 |
++| N5 | 保持货箱与路径，改变运输机型 |
++| N6 | 调整架次优先序：相邻交换或单架次重定位 |
++
++每个邻域先去重、检查运输可行性并按 LEVEL 0 代理值排序，仅前两个候选进入 LEVEL 1。发现优于 incumbent 超过阈值的解后重新从 N1 开始；一轮邻域下降结束后，从 N1/N3/N4/优先序重定位中选择小扰动作为下一轮搜索中心。论文对 N2/N3 的文字表述较简略，此处以函数实现解释，不能描述为穷尽全部候选的精确局部最优证明。
++
++若最佳 LEVEL 1 解相对初解改善，才执行最终 LEVEL 2 标准审计；只有审计可行且联合目标确实改善时接受，否则保留初解。正式采用干净归档 `problem3_vns_20cycles.xlsx`：20 个运输架次、3 个中继架次，联合完工时间 6985.31006777659 s，总能耗 68.7710956385158 kWh。3 个中继架次不等于需要 3 架实体中继 UAV。
++
++**输入与输出。** 输入包括 Q1 航段、Q2 正式结果、原始通信/中继参数、DEM、覆盖表、精英池与受信缓存。输出包括运输和中继时序、候选部署、通信检查、目标与邻域统计。缓存来源、135/210 条已有有向航段及未知 pickle 拒绝策略见 [运行说明](running.md)。独立权重重求解实验未完整完成，且其历史独立缓存仍缺失。
++
++## 5. 问题四：固定时序下的任务分区与资源核算
++
++### 5.1 不可拆分任务块与无标签枚举
++
++[任务关联图](../src/problem4/problem4_service_zone_graph.py)以 15 个服务区为顶点：同一 Q3 运输架次访问的服务区必须同组，连通分量构成 7 个不可拆分任务块。分区只改变任务所属组，不改变货箱组批、机型、路径、交付与返航绝对时刻。
++
++两组划分固定第一个任务块属于第一组以消除组标签对称；三组划分采用 restricted-growth string 递归枚举非空无标签分区。得到 K=2 的 63 个方案、K=3 的 301 个方案。这里“完整”指 7 个任务块和固定任务结构下的全部分区，不能扩大为自由重调度问题的全局求解。
++
++### 5.2 区间资源核算
++
++[资源核算](../src/problem4/problem4_group_scheduler.py)对每个实际出现的任务块子集缓存计算结果。运输 UAV 按型号分别统计准备开始至返航区间；共享电池统计准备开始至充满区间；中继 UAV 统计准备开始至返航后周转结束区间；中继能源组件统计准备开始至充满区间。按开始时刻排序，使用最小堆复用最早释放的资源，求固定区间系统所需最少实体资源数。
++
++同一个中继任务在某组中无论保障几个运输架次都只计一次；如果其保障对象分属多个组，各相关组独立配置该中继任务及资源，并保留原时刻。跨组不能共享资源，因而可能增加配置与重复中继能耗。
++
++通信区间通过综合提交表 `结果提交.xlsx` 的 `Q3_通信保障` 页明确读取。该映射已与冻结的 Q4 中继区间核对，不表示历史缺失文件“结果提交模板_问题三已填写.xlsx”已经恢复或与综合表字节相同。
++
++### 5.3 Pareto 维度及代表方案
++
++[完整枚举与筛选](../src/problem4/problem4_full_enumeration.py)使用 14 个最小化指标：A/B/C 型运输 UAV 三类、同型号共享电池三类、中继 UAV、中继能源组件共 8 类资源数量，以及货箱数、质量、体积、运输架次数、运输总时长、通信保障总时长的 6 项组间均衡指标。论文用相对极差定义均衡性：
++
++$$
++B_X=\frac{\max_k X_k-\min_k X_k}{\bar X},\qquad
++\bar X=\frac{1}{K}\sum_{k=1}^{K}X_k.
++$$
++
++实现对均值接近零的指标返回 0。若某方案在全部 14 项上不劣且至少一项严格更优，则形成支配；比较容差为 $10^{-10}$。归档非支配集分别包含 27 个和 58 个方案。能耗、库存缺口和代表性分析参与后续报告与分层比较，不应被描述为原 Pareto 筛选的额外目标维度。
++
++最终代表方案分析由 [selection_analysis](../src/problem4/problem4_selection_analysis.py) 和 [final_paper_results](../src/problem4/problem4_final_paper_results.py) 完成。K2-032 需 9 架运输 UAV、15 组共享电池、3 架中继 UAV、3 组能源组件；K3-007 分别需 10、16、4、4。两方案均有库存缺口；结构可行与库存可执行是两个判断。固定时序下不能声称分区降低了完工时间。
++
++## 6. 证据与验证边界
++
++| 结论 | 当前证据 |
++|---|---|
++| 模型与算法已实现 | 上述源码、最终论文与归档结果相互核对；差异已明确披露 |
++| 基础工程检查 | Phase 3 的 15 项轻量测试、41 模块导入和 36 份冻结结果校验；具体记录见报告 |
++| Q1 建模接口 | 用正式已选的 18 个候选构建 80 条覆盖约束；未调用完整候选优化 |
++| Q3 缓存兼容 | 来源字节、相关输入哈希、签名及候选顺序核对通过；没有重建缓存或重新通信审计 |
++| Q4 资源核算 | 126 个非空真子集 × 8 类资源，共 1008 项计数与归档一致 |
++| 完整复现 | Q1 完整优化、Q2/Q3 大规模搜索及 Q4 全枚举未在工程阶段重跑；不能声称端到端复现成功 |
++
++读取归档中的 `PASS` 是检查既有证据，只有重新执行相应验证函数才属于当前环境的再次核验。Phase 3 的实际命令、数值容差和未解决依赖见 [phase3_report.md](phase3_report.md)；正式参数与历史来源分别由 [formal_versions.json](formal_versions.json)、[provenance.csv](provenance.csv) 固定。公开数据、图表、论文及合作贡献的授权仍需单独审核，工程可读取不等于可以再分发。
+--- /dev/null
++++ b/docs/phase4_report.md
+@@ -0,0 +1,153 @@
++# Phase 4 文档与展示验收报告
++
++本阶段完成中文 README、技术方法、结果证据、扩展实验、图片来源和公开范围说明。改动限于 `UAV-Disaster-Relief-Optimization` 发布候选中的文档及审计清单。没有修改算法、正式参数、原始竞赛目录或冻结结果，没有启动大规模实验、上传 GitHub 或进入 Phase 5。
++
++本项目仍是**发布候选**：文档已具备技术交流与作品集阅读所需的信息，但公开授权和完整优化复现尚未完成。
++
++## 1. 阅读依据与本次改动
++
++开始前读取 Phase 2/3 报告、Phase 3 变更表、运行说明、正式版本、溯源、依赖和待审清单，并核对现有源码及正式工作簿。论文依据为用户确认的最终提交版，身份与 SHA-256 保留在 [formal_versions.json](formal_versions.json) 的 `paper_basis`；原论文只读访问，没有复制公开。
++
++候选目录本轮共 **3 个已有文件修改、14 个文件新增**。详细前后 SHA-256 见 [phase4_changes.csv](phase4_changes.csv)，文本差异见 [phase4_changes.patch](phase4_changes.patch)，最终文件哈希见 [phase4_current_checksums.csv](phase4_current_checksums.csv)。历史 Phase 2/3 清单全部保留，未用本次哈希覆盖原始来源哈希。
++
++| 文件 | 操作 | 主要变化或作用 |
++|---|---|---|
++| [README.md](../README.md) | 修改 | 从 Phase 3 状态说明改为项目首页，给出真实技术路线、正式入口、结果和验证边界 |
++| [running.md](running.md) | 修改 | 明确 A/B 两种运行模式、单一输入根的回退行为、新产物汇集、新缓存来源和执行状态 |
++| [results/runs/README.md](../results/runs/README.md) | 修改 | 移除过时阶段说明，解释独立输出、运行清单与隐私隔离 |
++| [methodology.md](methodology.md) | 新增 | 四问题数学模型、公式、ALNS/VNS 算子、资源核算及论文/代码差异 |
++| [results.md](results.md)、[result_metrics.csv](result_metrics.csv) | 新增 | 指标定义、8 个工作簿的 67 项值、单元格/计数规则和来源哈希 |
++| [experiments/README.md](../experiments/README.md) | 新增 | 基线、敏感性、种子实验、备选算法和未完成实验的边界 |
++| [figures.md](figures.md)、[figures.csv](figures.csv) | 新增 | 15 张代表图来源登记、最终论文图号、脚本及公开状态 |
++| [known_issues.md](known_issues.md) | 新增 | 20 项已知问题、历史版本差异与复现限制 |
++| [publication_review.md](publication_review.md) | 新增 | 数据、论文、图片、合作贡献和隐私的授权门槛 |
++| [commands.csv](commands.csv) | 新增 | 36 项命令及准备步骤的状态、依赖、证据与副作用 |
++| [phase4_report.md](phase4_report.md)、[phase4_verification.json](phase4_verification.json) | 新增 | 本报告与机器可读验收结果 |
++| `phase4_changes.csv`、`phase4_changes.patch`、`phase4_current_checksums.csv` | 新增 | 变更记录、文本差异和最终文件状态 |
++
++3 个审计清单避免自引用哈希：变更表中自身、差异文件及总校验表的 `after_sha256` 留空并注明原因；总校验表覆盖除自身以外的候选文件。总校验表不会包含虚拟环境、临时审计工具和 runs 实验产物（仅保留该目录 README）。
++
++## 2. README 完整目录
++
++首页实际标题层级如下，数学细节放在独立方法文档中：
++
++```text
++目录
++项目概述
++核心技术
++技术路线
++四个问题
++  Q1：单点往返运输与组批
++  Q2：多点运输与共享资源调度
++  Q3：连续通信保障的数值建模与联合搜索
++  Q4：任务分区与资源配置
++项目结构
++环境与快速开始
++  A. 已有结果复核与可视化
++  B. 从原始输入重新运行优化
++实验结果
++可复现性与已知限制
++资料与公开范围
++```
++
++方法表明确区分 Gurobi 集合划分 MILP、Q2 ALNS、Q3 ALNS/VNS 独立分支，以及 Q4 完整分区枚举和 Pareto 筛选。技术路线没有画出“正式 ALNS 最优解直接送入 VNS”的错误依赖，也没有把通信链路参数当作 Q1 航段预处理输入。
++
++## 3. 正式指标核对
++
++只读提取冻结工作簿，核对首页 14 处数值行或配置文字；源表定位与未舍入值均保留在指标 CSV。没有生成新的优化答案。
++
++| 内容 | 核验结果与解释 |
++|---|---|
++| Q1 | 18 批、80 箱、59.1286907835445 kWh、32776.0157489162 s；时间为累计作业时长 |
++| Q2 | 20 架次、80 箱、6955.47652001904 s、65.6355317188857 kWh、加权延误0；正式1000次、种子20260927、指定权重未改变 |
++| Q3 | 20运输架次、3中继架次、80箱；联合完工6985.31006777659 s、能耗68.7710956385158 kWh；配置8/14/2/3，第四项是中继能源组件 |
++| Q3 通信 | 归档未覆盖0 s、13项PASS；属于1 s采样及对已检测边界0.01 s细化下的检查，不是连续时刻解析证明 |
++| Q4 | K=2：63候选、27 Pareto；K=3：301候选、58 Pareto；代表方案K2-032与K3-007资源9/15/3/3及10/16/4/4 |
++| Q4 代价 | 能耗69.5308043960809、71.5252433612119 kWh；完工时间固定为Q3时序，两方案均有库存缺口 |
++
++没有比较 Q1 累计时间与 Q2/Q3 最大完工时间来构造提速百分比；没有声称分区缩短完工时间，也没有将归档 `PASS` 等同于本阶段重新通信审计。Q3 资源使用量与实际库存上限另行区分。
++
++## 4. 图片来源与公开状态
++
++15 张代表图全部来源可定位，原图 SHA-256 核验 **15/15**，其中开发目录与附件同字节副本 **11/11**。12 张列为首页展示候选，**本阶段复制图片0张、公开图片0张**，全部保持 `pending_review / not_copied`。图片缺少授权时，README 使用明确说明，没有失效图片链接或虚构图表。
++
++| 内容 | 最终论文位置 / 来源说明 | 当前限制 |
++|---|---|---|
++| DEM三维地形、Q1三维航迹 | 地形为图2子图；独立三维航迹未找到论文图号 | DEM派生材料授权待审 |
++| Q2正式收敛、UAV/电池甘特、配送时刻 | 图8、12、11、13；对应正式1000次结果 | 正式入口会重跑搜索，不能当纯绘图命令 |
++| Q2五随机种子 | 图9 | 均衡权重扩展，不能替代正式配置重复实验 |
++| G01覆盖与Q3联合方案 | 图14及16–19 | 地理数据、通信数值检查和派生图权限待审 |
++| Q4 Pareto与资源配置 | 图21、23、24 | 原图存在，当前没有找到三图的生成脚本 |
++
++发现并披露附件编号与论文编号不一致：附件 `图13.png` 对应论文图11（共享电池），附件 `图11.png` 对应论文图13（配送时刻）。这两图及 Q4 Pareto 图已结合原图、题注与论文嵌图目视核对；其他图不是全部逐张目视审查。
++
++28 张附件 PNG 文本元数据已扫描，26 张有 Software 文本元数据，未检出私人路径、邮箱或手机号模式。最终论文有作者/最后编辑者 Office 元数据，未将私人值写入公开说明。元数据扫描不能代替所有图像像素和嵌入对象的审查。
++
++## 5. 命令与验证范围
++
++命令清单有36项：**Phase 4已验证2项、Phase 3已验证2项、静态检查31项、阻塞1项**。示例中的授权数据路径是占位符；已验证指本机使用真实且显式配置的外部目录执行的等效命令，不表示占位目录本身存在。
++
++| 状态 | 命令或范围 | 证据 |
++|---|---|---|
++| 已验证通过（Phase 4） | `run.py --list` | 从项目外 CWD 给出解释器和入口绝对路径，退出0，列出41项 |
++| 已验证通过（Phase 4） | 现有15项轻量测试 | 15通过，0失败、0错误、0跳过；87.017 s，含进程启动总耗时88.325 s |
++| 已验证通过（Phase 3） | `run.py problem4_final_paper_results` | 25项PASS；11表619单元格容差比较、10份LaTeX字节一致；本阶段回归另在内存重建并运行25项检查 |
++| 已验证通过（Phase 3） | `run.py read_dem --raw-dir ...` | 从外部CWD读取1309×1486、EPSG:4326 DEM |
++| 静态检查通过、尚未执行 | 原始输入逐步汇集、Q1/Q2/Q3、Q3绘图、缓存重建及其他扩展命令 | 入口与参数核对；示例PowerShell语法解析，不执行搜索 |
++| 尚未执行 | 空白环境安装、跨平台、完整优化及重新通信审计 | 没有给出虚假的端到端复现结论 |
++| 存在阻塞 | Q3独立权重实验 | 缺少历史case_1独立缓存及manifest，未以正式缓存替代 |
++
++本阶段实际测试命令（`UAV_RAW_DIR` 已明确设为原始数据目录，输出另设为候选 runs）：
++
++```powershell
++.\.venv\Scripts\python.exe -B -m unittest discover -s tests -v
++```
++
++完整日志在本地 `results/runs/phase4_regression/unittest.log`，包含环境信息，继续被 Git 忽略。测试检查41模块导入、正式参数、路径及只读保护、基础数据、归档结构、Q1小模型、Q4报告和缓存身份，没有运行 ALNS/VNS、全分区枚举或通信缓存重建。上游 Matplotlib/pyparsing 有弃用提示，未为消除提示更换依赖。
++
++**1008项资源计数的一致性来自Phase 3**；Phase 4现有回归抽查3个子集×8项，未把24项抽查写成再次完成1008项全量复核。Phase 3 Q4新Excel的最大数值差为 `4.3655745685100555e-11`，使用明确绝对容差 `1e-9`；不是与冻结工作簿字节相同。
++
++## 6. 文档和公开隔离验收
++
++| 检查 | 结论 |
++|---|---|
++| Markdown相对链接与锚点 | 17份Markdown检查通过；没有链接到缺失文件或被忽略的二进制材料；细目计数见verification JSON |
++| Mermaid | 3个图经Mermaid 10.9.3实际解析通过 |
++| LaTeX | 7组块公式、55处行内公式经KaTeX 0.16.11编译通过 |
++| PowerShell示例 | 16个代码块经系统Parser语法检查通过；不把解析视为实验执行 |
++| 首页指标 | 8个工作簿67项值；首页14处关联核对通过 |
++| Git忽略规则 | 36份reference、70份本地待审材料、缓存/日志/虚拟环境等隔离有效；允许的README及输入清单仍可跟踪 |
++| LICENSE与远程 | 没有添加LICENSE；候选根未初始化Git仓库，没有修改远程或push |
++
++Mermaid/LaTeX验证工具只安装在被忽略的 `.release-audit/phase4/`，未改 Python requirements。Git 忽略检查使用该目录下的临时独立元数据，没有在候选根创建 `.git`。**GitHub网页实际渲染尚未验证**，语法通过不能保证不同渲染版本的排版完全一致。
++
++文本隐私扫描覆盖新增说明及历史候选文本，包含 `phase3_changes.patch`。未检出私人绝对路径、联系方式、常见凭据模式或已知 Office 作者值；明确标注的 `authorized-uav-data` 占位路径予以保留。模式扫描与已知作者值比对不能排除所有个人信息或无固定格式密钥；原材料的授权门槛仍未解除。
++
++## 7. 原件、算法与正式结果保护
++
++与整理前快照及冻结清单比较，以下均**已验证通过**：
++
++- 原竞赛三个目录共1745个文件：文件集合、SHA-256、大小、修改时间和mode一致，无新增、缺失或修改。
++- 36份正式结果：SHA-256、大小、修改时间和mode一致。
++- 70份保留的非源码材料：内容哈希保持原值，含正式/扩展结果、缓存和审计证据。
++- 44个Python文件：与Phase 4开始时逐字节相同，包含41个模块、统一入口、路径模块及现有测试。requirements和忽略规则未改。
++
++没有对目标函数、约束、算子、权重、迭代次数、随机种子或数学模型产生修改。本阶段不存在新的优化性能结论；未来重跑是否得到同一搜索轨迹和结果仍需独立验证。
++
++## 8. 待公开授权与已知阻塞
++
++[review_required.csv](review_required.csv) 原194条状态保持不变：70项本地隔离，124项未复制。图片登记与该清单有重叠，不能相加当作不同材料数。具体范围见 [publication_review.md](publication_review.md)。
++
++待确认的范围包括：原始Excel和DEM、地理数据派生图、竞赛题目及模板、最终论文及Office元数据、合作队员的代码贡献和许可、正式/扩展工作簿及其私人元数据、15张登记图片。没有因材料已在本地就认定可以公开，也没有因授权未确认就断言构成侵权。
++
++文档重点披露：Q2 1000/1500次版本差别、固定尺度与论文归一化表述差异、延误统计集合差异、NSGA-II不可直接横比、CP-SAT固定结构扩展；Q3默认500次与旧帮助文本、固定基准F权重问题、VNS独立初始化、LEVEL1/LEVEL2区别、缺失权重实验缓存和未完成搜索；Q4固定时序与库存缺口。
++
++新增输入链还存在具体限制：`--input-dir`缺项会回退冻结表；新Excel字节可能不符合冻结缓存指纹；Q3精英池及暖启动含固定算例断言；新Q3时序不能直接复用旧综合表通信区间。运行说明提供显式输入汇集与可信新缓存方法，未修改断言或算法来伪装全链成功。
++
++## 9. Phase 5 建议（未执行）
++
++1. 先明确团队贡献、原始数据、DEM、论文/图像及结果摘要的公开范围，再决定许可证与允许跟踪的文件；逐张检查获准图片像素和元数据，保留原件和展示副本的溯源。
++2. 在全新环境验证固定依赖安装与15项测试；缺失授权数据时保留明确skip/阻塞，不把它计作通过。另行验证GitHub页面的Mermaid、数学式和图片布局。
++3. 对缺失cache、Q3固定基准断言、权重口径及历史依赖标签分别制定处理决定。任何影响算法评价或搜索轨迹的变更应独立评审，保留旧结果和版本。
++4. 若计划完整复现，先估算缓存与搜索预算，再逐阶段运行并记录输入哈希、随机种子、软件和求解器环境；新结果只进入独立runs，与冻结基线按明确指标和容差比较。
++5. 在准备好的暂存清单上再次审查权限、私人元数据、忽略规则和文件大小。发布、远程配置与push作为后续独立操作，本阶段均未执行。
+--- /dev/null
++++ b/docs/phase4_verification.json
+@@ -0,0 +1,152 @@
++{
++  "phase": 4,
++  "scope": {
++    "documentation_only": true,
++    "algorithm_or_parameter_changes": false,
++    "optimization_runs": false,
++    "formal_results_regenerated": false,
++    "github_upload": false,
++    "phase5_started": false
++  },
++  "originals": {
++    "count": 1745,
++    "sha256_size_mtime_mode_match": true,
++    "file_set_match": true,
++    "errors": []
++  },
++  "reference": {
++    "count": 36,
++    "sha256_size_mtime_mode_match": true,
++    "errors": []
++  },
++  "python_files": {
++    "count": 44,
++    "unchanged": true
++  },
++  "non_source_artifacts": {
++    "count": 70,
++    "unchanged": true
++  },
++  "figures": {
++    "registered": 15,
++    "source_hashes_matched": 15,
++    "duplicate_hashes_matched": 11,
++    "readme_selected": 12,
++    "copied": 0,
++    "pending": 15
++  },
++  "ignore": {
++    "checked_paths": 168,
++    "ignored_existing": 71,
++    "public_candidate_files": 87,
++    "held_existing": 70,
++    "errors": [],
++    "candidate_git_initialized": false
++  },
++  "unittest": {
++    "command": "python -B -m unittest discover -s tests -v",
++    "exit_code": 0,
++    "elapsed_s": 88.3253061,
++    "raw_data_explicit": true,
++    "log": "results/runs/phase4_regression/unittest.log",
++    "summary": "----------------------------------------------------------------------\nRan 15 tests in 87.017s\n\nOK\n",
++    "tests": 15,
++    "failures": 0,
++    "errors": 0,
++    "skipped": 0,
++    "unittest_time_s": 87.017
++  },
++  "imports": {
++    "actual_modules": 41,
++    "optional_ortools_present": true,
++    "foreign_cwd": true,
++    "basis": "existing test_syntax_and_imports_from_foreign_cwd passed with optional OR-Tools present"
++  },
++  "metrics": {
++    "metrics": 67,
++    "workbooks": 8,
++    "readme_checks": 14,
++    "source_hashes": {
++      "results/reference/problem1/problem1_batch_optimization.xlsx": "99d6e5a6324f79729bdb92bdf18d417f9f80bac067631a8a4c8bf36298f995d6",
++      "results/reference/problem2/problem2_Z1_priority_result.xlsx": "ec60632be1c53609145637e42a5acaf763d41cc3072214527ce91a0628e7fd34",
++      "results/reference/problem3/problem3_vns_20cycles.xlsx": "35436faa67ba582a419efc2fdb0b320ceccd08ec2c0eb86d2c3965b464b3104b",
++      "results/reference/problem4/problem4_final_paper_results.xlsx": "09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512",
++      "results/reference/problem4/problem4_K2_all.xlsx": "a5196ef7eaf41dcd08a6f71dc8d861f12ce37555bf1213b7c7a48ffc40555f0c",
++      "results/reference/problem4/problem4_K2_pareto.xlsx": "7be8485aaf2ad5ca5a6adc55e375804de818014bd5af07feae0ad64c4339e620",
++      "results/reference/problem4/problem4_K3_all.xlsx": "daf14e7f91f0ccc59910159e29b98d3d88e4da94f2c906257b7ab7e5627287bb",
++      "results/reference/problem4/problem4_K3_pareto.xlsx": "7b17fc4569e4708a55fd4c5cb3d13790c8f92c50bc63f2234ce03ceba0d04dc1"
++    },
++    "errors": []
++  },
++  "documents": {
++    "markdown_files": 17,
++    "relative_links": 147,
++    "anchors_checked": 12,
++    "errors": [],
++    "links_to_ignored_files": [],
++    "command_rows": 36,
++    "command_target_checks": 29,
++    "visual_exit_code": 0,
++    "powershell_exit_code": 0
++  },
++  "powershell": {
++    "blocks": 16,
++    "errors": [],
++    "execution": "parse_only"
++  },
++  "visual_syntax": {
++    "mermaid_version": "10.9.3",
++    "katex_version": "0.16.11",
++    "mermaid": 3,
++    "math_blocks": 7,
++    "math_inline": 55,
++    "errors": [],
++    "github_live_render_verified": false
++  },
++  "commands": {
++    "static_only": 31,
++    "verified_phase4": 2,
++    "verified_phase3": 2,
++    "blocked": 1
++  },
++  "q4_resource_verification": {
++    "phase3_full_counts": 1008,
++    "phase4_regression_subset_counts": 24,
++    "phase4_in_memory_report_checks": 25,
++    "full_enumeration_rerun": false
++  },
++  "environment": {
++    "python": "3.9.10",
++    "platform": "win32",
++    "clean_install_verified": false,
++    "python_requirements_changed": false,
++    "ortools_version": "9.15.6755"
++  },
++  "privacy": {
++    "preliminary_public_text_files": 83,
++    "known_office_author_values_checked": 2,
++    "office_sources_examined": 49,
++    "private_matches_reported": 0,
++    "all_image_pixel_review_completed": false,
++    "publication_rights_confirmed": false
++  },
++  "authorization": {
++    "historical_review_rows": 194,
++    "copied_local_hold": 70,
++    "not_copied": 124,
++    "new_figure_rows": 15,
++    "figure_rows_overlap_historical_review": true,
++    "license_added": false
++  },
++  "unexecuted": [
++    "full Q1 solve",
++    "Q2 ALNS",
++    "Q3 ALNS/VNS",
++    "communication geometry rebuild",
++    "full Q4 enumeration",
++    "plot regeneration",
++    "clean dependency installation",
++    "GitHub live rendering"
++  ],
++  "local_audit_directory": ".release-audit/phase4/"
++}
+--- /dev/null
++++ b/docs/publication_review.md
+@@ -0,0 +1,48 @@
++# 公开范围与待审核材料
++
++当前目录是 GitHub 发布候选，尚未完成全部材料的公开授权与隐私审核。本说明记录待确认事项，不把“来源不明/授权待确认”解释为已证实侵权。没有添加 LICENSE，没有批准整包公开，也没有执行上传。
++
++来源可追溯、运行可验证和有权再分发是三个独立条件。用户授权整理本地项目，不自动等于所有作者、竞赛资料与第三方数据已经同意开源。
++
++## 1. 已有审核范围
++
++[review_required.csv](review_required.csv) 保留 Phase 2 的194条材料审核记录：124条未复制，70条仅在本地冻结/隔离保存。它是按文件登记的历史清单，不是194项已确认侵权或隐私泄露。
++
++新增 [figures.csv](figures.csv) 对15张代表图片补充论文图号、来源哈希、生成脚本、对应数据和限制；它与历史材料清单有重叠，不能直接相加作为独立文件总数。15张图片均为 `authorization_status=pending_review`、`publication_status=not_copied`，没有进入公开候选文件或 README 图片链接。
++
++| 材料类别 | 当前处理 | 公开前需要确认 |
++|---|---|---|
++| 团队 Python 实现 | 保留源码和工程变更记录，作为团队自有实现候选 | 贡献者范围、合作队员的同意、是否含需要署名或继承许可的外部代码；不能由项目整理者代替所有贡献者授予许可 |
++| 原始 Excel 与竞赛原始数据 | 未复制到公开候选数据区，运行仅显式读取外部输入 | 题目/附件提供方允许的使用和再分发范围；可否公开原表、摘录字段或衍生数值 |
++| DEM、地理数据和第三方地图 | 原件未复制，相关图片待审 | 数据来源、地图/高程产品许可、派生图片的公开条件与必要署名 |
++| 竞赛题目、模板、最终论文及队员材料 | 未随项目公开；只读论文核对方法和图号 | 题目与模板再分发权限、论文及图片的共同作者同意、Office元数据、正文或图片中的姓名与联系方式 |
++| 36份正式结果 | `results/reference/` 保持冻结原内容与哈希，Git忽略 | 衍生数据权限、模板内容、工作簿作者/最后修改者元数据和本地路径；不得为脱敏覆盖正式原件 |
++| 扩展实验结果、通信缓存与中断证据 | 实验结果及 `review_hold/` 留在本地忽略区 | 数据和贡献授权、日志/清单中的个人路径、缓存来源与可公开内容；技术信任校验不替代授权 |
++| 15张代表图片及其他原项目图片 | 仅登记来源，未复制 | 图片作者、底层数据许可、像素中的个人信息、PNG/PDF元数据及论文对应关系；有生成脚本不自动意味着图片可公开 |
++| 文档中的结果摘要和新整理说明 | 仅摘录经核对的指标与方法，不复制整篇论文 | 衍生指标的公开范围、共同贡献的表述，以及后续选择的许可证范围 |
++
++## 2. 隐私与元数据
++
++Phase 2 已记录部分冻结工作簿含作者信息或本机路径；为保留正式证据，没有改写这些文件。Phase 4 只读核对的最终论文也存在作者/最后修改者等 Office 元数据，没有在公开说明中复述私人值。
++
++原附件28张 PNG 的文本元数据扫描未检出 Windows 绝对路径、邮箱或手机号模式，26张含 Software 字段。此结果仅限元数据文本，不涵盖所有图像像素、PDF属性或嵌入对象；不能据此把全部图片标为隐私审核通过。图片审查的证据层次和图号差异见 [figures.md](figures.md)。
++
++公开文档使用项目相对路径或明确占位路径，不应引入原机器的用户目录、联系方式、许可证标识或凭据。`run_manifest.json`、测试日志及本地审计快照可能记录实际输入绝对路径，因此继续留在忽略区。Gurobi 许可证文件、WLS密钥和令牌不属于可发布材料。
++
++## 3. 隔离规则与实际含义
++
++[.gitignore](../.gitignore) 继续隔离 `results/reference/`、`experiments/**/results/`、`review_hold/`、`.release-audit/`、原始/处理中数据内容、运行产物、本地环境与缓存，仅保留必要的数据说明文件。
++
++忽略规则用于减少误提交，不是授权证明，也不能阻止强制加入文件、人工压缩上传或已经跟踪的文件继续被提交。发布前应逐项检查实际 Git 索引和待发布树，不能仅检查 `.gitignore` 文本。当前规则也意味着公开克隆不会自动拥有本地待审结果和原始数据；README 的归档复核命令以具备获准本地材料为前提。
++
++[publication_gate.json](publication_gate.json) 是 Phase 2 的历史门槛记录，仍保留 `public_upload_allowed=false` 和 `license_assigned=false`。其中“完成Phase3路径和输出隔离”已由后续报告验证完成，但不代表其他公开条件自动完成；本阶段未通过覆盖历史记录来宣称获准公开。
++
++## 4. 后续公开处理
++
++1. 按材料和贡献者登记明确结论：允许公开、限定范围/署名条件，或仅供本地使用；保存依据，不能只依赖文件已存在于候选目录。
++2. 对允许公开但需要脱敏的结果或图片创建单独展示副本，记录来源、改动和新哈希；保留正式冻结原件及历史溯源，不解除全部忽略规则。
++3. 对未获数据再分发许可的材料保留外部输入方式，明确文件结构和缺失提示，不补造数据或缓存。图像来源/授权无法确认时继续使用文字说明。
++4. 在代码贡献和相关材料范围确认后，再决定是否添加适用 LICENSE。当前文档不替贡献者作许可承诺，也不对第三方材料作统一授权。
++5. 最终发布前审核实际待跟踪文件、Markdown链接、图片与Office元数据、凭据和本地路径，确认 README 对材料可获得性及验证程度的说明与发布内容一致。
++
++这些是后续公开准备事项，本阶段保留所有待审材料，没有擅自删除、公开或修改冻结结果。
+--- /dev/null
++++ b/docs/result_metrics.csv
+@@ -0,0 +1,68 @@
++metric_id,problem,value,unit,scope,source_path,sheet,selector,operation,sha256
++q1_sorties,problem1,18,架次,单点往返运输批次,results/reference/problem1/problem1_batch_optimization.xlsx,optimization_summary,A2,cell,99d6e5a6324f79729bdb92bdf18d417f9f80bac067631a8a4c8bf36298f995d6
++q1_energy,problem1,59.1286907835445,kWh,运输总能耗,results/reference/problem1/problem1_batch_optimization.xlsx,optimization_summary,B2,cell,99d6e5a6324f79729bdb92bdf18d417f9f80bac067631a8a4c8bf36298f995d6
++q1_time,problem1,32776.0157489162,s,累计作业时长之和；不是最大完工时间,results/reference/problem1/problem1_batch_optimization.xlsx,optimization_summary,C2,cell,99d6e5a6324f79729bdb92bdf18d417f9f80bac067631a8a4c8bf36298f995d6
++q1_candidates,problem1,19525,个,可行候选批次,results/reference/problem1/problem1_batch_optimization.xlsx,optimization_summary,D2,cell,99d6e5a6324f79729bdb92bdf18d417f9f80bac067631a8a4c8bf36298f995d6
++q1_boxes,problem1,80,箱,正式配送箱数,results/reference/problem1/problem1_batch_optimization.xlsx,optimization_summary,F2,cell,99d6e5a6324f79729bdb92bdf18d417f9f80bac067631a8a4c8bf36298f995d6
++q1_status,problem1,OPTIMAL,状态,归档求解器状态；未重新优化,results/reference/problem1/problem1_batch_optimization.xlsx,optimization_summary,G2,cell,99d6e5a6324f79729bdb92bdf18d417f9f80bac067631a8a4c8bf36298f995d6
++q2_delay,problem2,0,加权秒,全部配送箱按优先系数加权的期望时刻延误,results/reference/problem2/problem2_Z1_priority_result.xlsx,Summary,G2,cell,ec60632be1c53609145637e42a5acaf763d41cc3072214527ce91a0628e7fd34
++q2_time,problem2,6955.47652001904,s,运输最大完工时间,results/reference/problem2/problem2_Z1_priority_result.xlsx,Summary,H2,cell,ec60632be1c53609145637e42a5acaf763d41cc3072214527ce91a0628e7fd34
++q2_energy,problem2,65.6355317188857,kWh,运输总能耗,results/reference/problem2/problem2_Z1_priority_result.xlsx,Summary,I2,cell,ec60632be1c53609145637e42a5acaf763d41cc3072214527ce91a0628e7fd34
++q2_sorties,problem2,20,架次,运输架次数,results/reference/problem2/problem2_Z1_priority_result.xlsx,Summary,J2,cell,ec60632be1c53609145637e42a5acaf763d41cc3072214527ce91a0628e7fd34
++q2_seed,problem2,20260927,整数,正式随机种子,results/reference/problem2/problem2_Z1_priority_result.xlsx,Summary,L2,cell,ec60632be1c53609145637e42a5acaf763d41cc3072214527ce91a0628e7fd34
++q2_iterations,problem2,1000,次,正式ALNS迭代预算,results/reference/problem2/problem2_Z1_priority_result.xlsx,Summary,M2,cell,ec60632be1c53609145637e42a5acaf763d41cc3072214527ce91a0628e7fd34
++q2_boxes,problem2,80,箱,逐箱配送记录数,results/reference/problem2/problem2_Z1_priority_result.xlsx,Box_Delivery,A2:A81,count_nonempty,ec60632be1c53609145637e42a5acaf763d41cc3072214527ce91a0628e7fd34
++q2_checks,problem2,16,项,只读计数归档PASS；不是本次重算全部约束,results/reference/problem2/problem2_Z1_priority_result.xlsx,Feasibility,C2:C17,count_PASS,ec60632be1c53609145637e42a5acaf763d41cc3072214527ce91a0628e7fd34
++q3_delay,problem3,0,加权秒,运输加权期望时刻延误,results/reference/problem3/problem3_vns_20cycles.xlsx,Summary,B28,cell,35436faa67ba582a419efc2fdb0b320ceccd08ec2c0eb86d2c3965b464b3104b
++q3_time,problem3,6985.31006777659,s,运输与中继返航完成时刻的最大值,results/reference/problem3/problem3_vns_20cycles.xlsx,Summary,B29,cell,35436faa67ba582a419efc2fdb0b320ceccd08ec2c0eb86d2c3965b464b3104b
++q3_energy,problem3,68.7710956385158,kWh,运输加中继总能耗,results/reference/problem3/problem3_vns_20cycles.xlsx,Summary,B30,cell,35436faa67ba582a419efc2fdb0b320ceccd08ec2c0eb86d2c3965b464b3104b
++q3_joint_sorties,problem3,23,架次,运输加中继架次数,results/reference/problem3/problem3_vns_20cycles.xlsx,Summary,B31,cell,35436faa67ba582a419efc2fdb0b320ceccd08ec2c0eb86d2c3965b464b3104b
++q3_sorties,problem3,20,架次,运输架次数,results/reference/problem3/problem3_vns_20cycles.xlsx,Summary,B37,cell,35436faa67ba582a419efc2fdb0b320ceccd08ec2c0eb86d2c3965b464b3104b
++q3_relay_sorties,problem3,3,架次,中继架次数；不是实体无人机数,results/reference/problem3/problem3_vns_20cycles.xlsx,Summary,B38,cell,35436faa67ba582a419efc2fdb0b320ceccd08ec2c0eb86d2c3965b464b3104b
++q3_uncovered,problem3,0,s,数值采样和边界细化下未覆盖通信时长,results/reference/problem3/problem3_vns_20cycles.xlsx,Summary,B40,cell,35436faa67ba582a419efc2fdb0b320ceccd08ec2c0eb86d2c3965b464b3104b
++q3_cycles,problem3,20,轮,正式VNS周期,results/reference/problem3/problem3_vns_20cycles.xlsx,Summary,B2,cell,35436faa67ba582a419efc2fdb0b320ceccd08ec2c0eb86d2c3965b464b3104b
++q3_seed,problem3,20260925,整数,正式VNS随机种子,results/reference/problem3/problem3_vns_20cycles.xlsx,Summary,B3,cell,35436faa67ba582a419efc2fdb0b320ceccd08ec2c0eb86d2c3965b464b3104b
++q3_boxes,problem3,80,箱,20条有效架次中去重箱ID；同时检查无重复,results/reference/problem3/problem3_vns_20cycles.xlsx,Transport_Sorties,F2:F21,unique_semicolon_ids,35436faa67ba582a419efc2fdb0b320ceccd08ec2c0eb86d2c3965b464b3104b
++q3_checks,problem3,13,项,归档最终检查；含数值通信检查,results/reference/problem3/problem3_vns_20cycles.xlsx,Final_Feasibility_Check,C2:C14,count_PASS,35436faa67ba582a419efc2fdb0b320ceccd08ec2c0eb86d2c3965b464b3104b
++q3_config_uavs,problem4,8,架,实体运输无人机,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,B2,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q3_config_batteries,problem4,14,块,共享电池,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,B3,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q3_config_relay_uavs,problem4,2,架,实体中继无人机,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,B4,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q3_config_components,problem4,3,套,通信中继能源组件,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,B5,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q3_config_gap_uavs,problem4,0,架,运输无人机库存缺口,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,B6,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q3_config_gap_batteries,problem4,0,块,共享电池库存缺口,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,B7,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q3_config_gap_relay_uavs,problem4,0,架,中继无人机库存缺口,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,B8,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q3_config_gap_components,problem4,0,套,通信中继能源组件库存缺口,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,B9,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q3_config_transport_energy,problem4,65.5984982740489,kWh,运输能耗,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,B10,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q3_config_relay_energy,problem4,3.17259736446696,kWh,含跨组复制任务的中继能耗,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,B11,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q3_config_energy,problem4,68.7710956385158,kWh,运输与中继重核算总能耗,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,B12,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q3_config_time,problem4,6985.31006777659,s,固定Q3任务时序下整体完工时间,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,B14,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k2_uavs,problem4,9,架,实体运输无人机,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,C2,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k2_batteries,problem4,15,块,共享电池,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,C3,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k2_relay_uavs,problem4,3,架,实体中继无人机,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,C4,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k2_components,problem4,3,套,通信中继能源组件,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,C5,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k2_gap_uavs,problem4,1,架,运输无人机库存缺口,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,C6,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k2_gap_batteries,problem4,1,块,共享电池库存缺口,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,C7,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k2_gap_relay_uavs,problem4,1,架,中继无人机库存缺口,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,C8,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k2_gap_components,problem4,0,套,通信中继能源组件库存缺口,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,C9,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k2_transport_energy,problem4,65.5984982740489,kWh,运输能耗,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,C10,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k2_relay_energy,problem4,3.93230612203204,kWh,含跨组复制任务的中继能耗,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,C11,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k2_energy,problem4,69.5308043960809,kWh,运输与中继重核算总能耗,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,C12,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k2_time,problem4,6985.31006777659,s,固定Q3任务时序下整体完工时间,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,C14,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k3_uavs,problem4,10,架,实体运输无人机,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,D2,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k3_batteries,problem4,16,块,共享电池,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,D3,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k3_relay_uavs,problem4,4,架,实体中继无人机,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,D4,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k3_components,problem4,4,套,通信中继能源组件,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,D5,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k3_gap_uavs,problem4,2,架,运输无人机库存缺口,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,D6,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k3_gap_batteries,problem4,2,块,共享电池库存缺口,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,D7,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k3_gap_relay_uavs,problem4,2,架,中继无人机库存缺口,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,D8,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k3_gap_components,problem4,0,套,通信中继能源组件库存缺口,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,D9,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k3_transport_energy,problem4,65.5984982740489,kWh,运输能耗,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,D10,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k3_relay_energy,problem4,5.92674508716305,kWh,含跨组复制任务的中继能耗,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,D11,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k3_energy,problem4,71.5252433612119,kWh,运输与中继重核算总能耗,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,D12,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k3_time,problem4,6985.31006777659,s,固定Q3任务时序下整体完工时间,results/reference/problem4/problem4_final_paper_results.xlsx,Table8_综合比较,D14,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k2_selected,problem4,K2-032,方案编号,最终方案,results/reference/problem4/problem4_final_paper_results.xlsx,Table9_方案筛选,F2,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k2_all,problem4,63,个,7个固定任务块下的all方案数,results/reference/problem4/problem4_K2_all.xlsx,K2_all,A2:A64,count_nonempty,a5196ef7eaf41dcd08a6f71dc8d861f12ce37555bf1213b7c7a48ffc40555f0c
++q4_k2_pareto,problem4,27,个,7个固定任务块下的pareto方案数,results/reference/problem4/problem4_K2_pareto.xlsx,Pareto_K2,A2:A28,count_nonempty,7be8485aaf2ad5ca5a6adc55e375804de818014bd5af07feae0ad64c4339e620
++q4_k3_selected,problem4,K3-007,方案编号,最终方案,results/reference/problem4/problem4_final_paper_results.xlsx,Table9_方案筛选,F3,cell,09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512
++q4_k3_all,problem4,301,个,7个固定任务块下的all方案数,results/reference/problem4/problem4_K3_all.xlsx,K3_all,A2:A302,count_nonempty,daf14e7f91f0ccc59910159e29b98d3d88e4da94f2c906257b7ab7e5627287bb
++q4_k3_pareto,problem4,58,个,7个固定任务块下的pareto方案数,results/reference/problem4/problem4_K3_pareto.xlsx,Pareto_K3,A2:A59,count_nonempty,7b17fc4569e4708a55fd4c5cb3d13790c8f92c50bc63f2234ce03ceba0d04dc1
+--- /dev/null
++++ b/docs/results.md
+@@ -0,0 +1,90 @@
++# 正式结果、指标口径与证据
++
++本页展示被冻结的正式实验结果，不把读取归档解释为本轮重新求解。机器可读的 [result_metrics.csv](result_metrics.csv) 从 8 个正式工作簿只读提取 67 项值，逐项记录工作簿相对路径、工作表、单元格或计数范围、运算、单位、统计范围及源文件 SHA-256。README 的主要数值行按这些值校对。
++
++CSV 中 `source_path` 相对于项目根，是本地证据定位，不是公开下载链接；这些工作簿仍由 `.gitignore` 隔离。正式归档与原竞赛文件的映射见 [provenance.csv](provenance.csv)，版本选择见 [formal_versions.json](formal_versions.json)。所有计数均排除表头；CSV 保留 OpenPyXL 读取的数值，首页保留 6 位小数。
++
++## Q1：单点组批
++
++来源：`results/reference/problem1/problem1_batch_optimization.xlsx`。
++
++| 指标 | 原值 | `optimization_summary` 单元格 | 含义 |
++|---|---:|---|---|
++| 运输批次 | 18 | A2 | 单点往返批次，不是实体无人机数量 |
++| 运输物资 | 80 箱 | F2 | `box_assignment` 有 80 个唯一箱 ID |
++| 可行候选 | 19525 个 | D2 | DFS 枚举后参与集合划分的候选 |
++| 总能耗 | 59.1286907835445 kWh | B2 | 被选批次的往返运输能耗之和 |
++| 累计作业时间 | 32776.0157489162 s | C2 | 各批次准备、装载、飞行、交接等作业时长之和 |
++| 求解状态 | OPTIMAL | G2 | 归档求解器状态，针对既定候选模型及容差 |
++
++Q1 没有按实体机队并行排程，累计时间不能与 Q2/Q3 的最大完工时间直接比较。Phase 3/4 的 Gurobi 检查只以 18 个正式已选批次构建 80 条覆盖约束，未重新枚举、优化全部候选，不能据此声称重新证实该最优解。
++
++## Q2：正式 1000 次 ALNS
++
++来源：`results/reference/problem2/problem2_Z1_priority_result.xlsx`。
++
++| 指标 | 原值 | `Summary` 单元格 |
++|---|---:|---|
++| 加权延误 Z1 | 0 加权秒 | G2 |
++| 最大完工时间 Z2 | 6955.47652001904 s | H2 |
++| 运输能耗 Z3 | 65.6355317188857 kWh | I2 |
++| 运输架次 Z4 | 20 | J2 |
++| 随机种子 | 20260927 | L2 |
++| 迭代次数 | 1000 | M2 |
++
++`Box_Delivery` 有 80 条配送记录；`Feasibility!C2:C17` 为 16 项 PASS。表中权重在 `B2:E2`，为 `(0.55, 0.15, 0.15, 0.15)`。这些是归档记录；轻量测试重新核对了结构和正式参数，没有执行 1000 次搜索。
++
++Z1 对代码中的全部配送箱累加“无量纲应急系数 × 超过期望交付时刻的秒数”，故称加权秒；它与硬时限检查是不同条件。Z2 是运输任务最晚返航完成时刻，Z3 不含中继能耗。论文的延误求和集合及一般归一化公式与实现有差别，见 [方法文档](methodology.md) 和 [已知问题](known_issues.md)。
++
++## Q3：20 周期 VNS 正式联合方案
++
++来源：`results/reference/problem3/problem3_vns_20cycles.xlsx`，选用附件中只有 20 条有效运输架次的版本，不采用含开发汇总行的工作簿。
++
++| 指标 | 原值 | `Summary` 单元格 |
++|---|---:|---|
++| 联合目标中的配送加权延误 | 0 加权秒 | B28 |
++| 联合最大完工时间 | 6985.31006777659 s | B29 |
++| 运输与中继总能耗 | 68.7710956385158 kWh | B30 |
++| 运输加中继架次 | 23 | B31 |
++| 运输架次 | 20 | B37 |
++| 中继架次 | 3 | B38 |
++| 数值检查的未覆盖通信时长 | 0 s | B40 |
++
++`Transport_Sorties!F2:F21` 的分号分隔箱 ID 共 80 个且无重复，`Final_Feasibility_Check!C2:C14` 为 13 项 PASS。第一项历史检查的文字包含“与问题二正式结果完全一致”，其详情只核验架次数、覆盖及硬约束；不能用该标题证明访问次序未变，VNS 实际允许调整访问次序。
++
++实体资源配置由 Q4 最终比较表的 Q3 基线列交叉定位：`problem4_final_paper_results.xlsx/Table8_综合比较!B2:B5` 分别为 **8 架运输 UAV、14 块共享电池、2 架中继 UAV、3 套中继能源组件**。这里组件是与中继通信保障配套的能源资源；3 个中继架次不能替换成 3 架实体无人机。
++
++同表 `B10:B12` 给出运输能耗 65.5984982740489 kWh、中继能耗 3.17259736446696 kWh、联合能耗 68.7710956385158 kWh。联合完工时间取运输与中继返航时刻最大值，不包括此后组件充电结束时间。
++
++通信实现以 **1 s** 采样并对已检测的状态转换边界细化至 **0.01 s**。未覆盖时长为零只在该数值口径下成立，不能排除采样点间未检测到的短暂变化。LEVEL1 搜索评价的占位通信通过字段不等于 LEVEL2 数值检查；本阶段没有重新计算轨迹通信覆盖。
++
++## Q4：固定 Q3 时序的分区代价
++
++`problem4_K2_all.xlsx/K2_all` 有 63 行方案，`problem4_K3_all.xlsx/K3_all` 有 301 行；对应 `problem4_K2_pareto.xlsx/Pareto_K2` 与 `problem4_K3_pareto.xlsx/Pareto_K3` 有 27、58 行。每张表均按方案 ID 的非空记录计数，未计入表头或其他工作表。
++
++以下来源为 `results/reference/problem4/problem4_final_paper_results.xlsx`。
++
++| 指标 | Q3 基线（B列） | K2-032（C列） | K3-007（D列） | `Table8_综合比较` 行 |
++|---|---:|---:|---:|---|
++| 实体运输 UAV / 架 | 8 | 9 | 10 | 2 |
++| 共享电池 / 块 | 14 | 15 | 16 | 3 |
++| 实体中继 UAV / 架 | 2 | 3 | 4 | 4 |
++| 中继能源组件 / 套 | 3 | 3 | 4 | 5 |
++| 运输 UAV 库存缺口 / 架 | 0 | 1 | 2 | 6 |
++| 电池库存缺口 / 块 | 0 | 1 | 2 | 7 |
++| 中继 UAV 库存缺口 / 架 | 0 | 1 | 2 | 8 |
++| 组件库存缺口 / 套 | 0 | 0 | 0 | 9 |
++| 总能耗 / kWh | 68.7710956385158 | 69.5308043960809 | 71.5252433612119 | 12 |
++| 整体完工时间 / s | 6985.31006777659 | 6985.31006777659 | 6985.31006777659 | 14 |
++
++最终方案 ID 在 `Table9_方案筛选!F2:F3`。分区后资源不跨组共享，保障多个组的中继任务按组复制，故资源与能耗可能增加；仍沿用既定绝对时刻，不能宣传完工时间改善。结构可行也不代表库存足够，两代表方案均有缺口。
++
++Pareto 判断使用 8 类资源计数和 6 类工作量平衡指标，共 14 维。首页的资源汇总和二维 Pareto 图片只是摘要，不能替代完整向量的支配判定。代表方案能耗来自后续核算，不是原 Pareto 过滤的额外目标。
++
++## 已重新核对到哪一步
++
++- **Phase 4 已验证：** 只读提取上述指标并核对首页数值；36 份冻结结果哈希；15 项轻量测试全部通过。Q4 回归在内存重建报告并运行原有 25 项检查；资源入口抽查 3 个子集 × 8 项。
++- **Phase 3 已验证：** 全部 126 个非空真子集 × 8 类资源，共 1008 项计数一致；写出的 Q4 报告 11 张表、619 个单元格在绝对容差 `1e-9` 下匹配，最大数值差 `4.3655745685100555e-11`；10 份 LaTeX 表字节一致。新 Excel 工作簿不与冻结工作簿逐字节相等。
++- **尚未执行：** 完整 Q1 优化、Q2/Q3 搜索、通信几何重算、Q4 全分区枚举和跨平台端到端复现。
++
++具体证据见 [Phase 3 报告](phase3_report.md)、[Phase 4 报告](phase4_report.md)。未经授权的原始材料、工作簿和图像继续留在本地待审范围；本页的摘要不构成对底层材料再分发的许可。
+--- a/docs/running.md
++++ b/docs/running.md
+@@ -1,6 +1,6 @@
+-# Phase 3 工程运行说明
++# 运行与复现说明
+ 
+-此文档说明工程入口与验证范围，不代表四个问题已完成端到端复现。执行长实验前应查看 `phase3_report.md`。Phase 2 清单中的源码哈希是整理前的历史值；整理后的变更另存 `phase3_changes.csv`。
++此文档区分归档结果复核与重新求解。四个问题尚未完成端到端复现，长实验不能当作轻量检查执行。工程验证证据见 [Phase 3 报告](phase3_report.md)，本轮状态见 [Phase 4 报告](phase4_report.md)，命令核对清单见 [commands.csv](commands.csv)。Phase 2 清单中的源码哈希代表整理前版本，工程变更另存 [phase3_changes.csv](phase3_changes.csv)。
+ 
+ ## 环境
+ 
+@@ -13,9 +13,9 @@
+ .\.venv\Scripts\python.exe -m pip install -r requirements-experiments.txt
+ ```
+ 
+-以上是新环境安装方式。本轮验证环境采用 `--system-site-packages` 复用本机已有科学计算包，另在候选目录 `.venv` 安装 NetworkX 3.2.1；未验证完全空白环境的一次性安装。所有直接依赖的已安装包元数据均允许 Python 3.9。新版本 Python/其他系统未验证。
++以上安装命令为**静态检查通过、尚未执行空白环境安装**。实际验证环境在 Phase 3 使用 `--system-site-packages` 复用本机已有科学计算包，另在候选目录 `.venv` 安装 NetworkX 3.2.1；Phase 4 继续使用该环境。所有直接依赖的已安装包元数据均允许 Python 3.9。新版本 Python、其他操作系统及空白环境的一次性安装尚未验证。
+ 
+-Gurobi Python 包与可用许可证是两个条件。问题一集合划分需要 Gurobi；请按所在机构或个人合法许可配置本机许可证。不要提交 `gurobi.lic`、WLS 密钥或令牌。本轮仅通过真实问题一建模函数构建 18 个正式已选候选、80 条覆盖约束的模型，未调用 optimize，也未据此声称完整求解许可或最优结果已验证。
++Gurobi Python 包与可用许可证是两个条件。问题一集合划分需要 Gurobi；请按所在机构或个人合法许可配置本机许可证。不要提交 `gurobi.lic`、WLS 密钥或令牌。轻量测试仅通过真实问题一建模函数构建 18 个正式已选候选、80 条覆盖约束的模型，未调用 optimize，不能据此声称完整求解许可或最优结果已验证。问题二、三的正式搜索使用 Python 启发式算法，问题四使用枚举和区间资源核算。
+ 
+ ## 输入与输出
+ 
+@@ -30,17 +30,9 @@
+ | 扩展实验归档 | `experiments/problemN/results/` | 仅当前三类未命中时读取 |
+ | 新结果 | `results/runs/<UTC时间_随机标识>/problemN/` | `--run-dir` 只接受 runs 内尚不存在的目录 |
+ 
+-输入优先级为：显式 input 根 → processed → reference → experiments 归档。明确缺失的文件会报出解析路径及数据提供方式。默认运行不会自动串联前一次运行的产物；要使用新预处理结果，显式传入前一运行目录。
++输入优先级为：显式 input 根 → processed → reference → experiments 归档。只有所有候选位置都缺失时才报错。`--input-dir` 只能指定一个根，且不是“禁止回退”开关；该根缺少某文件时仍会读取后面的冻结来源。多步重算应汇集已确认的新产物，不能只传最后一步的输出目录。具体做法见[从原始输入构建中间依赖](#从原始输入构建中间依赖)。
+ 
+ 原始数据和 DEM 尚未获公开授权，未复制进仓库。以下示例中的 `.\authorized-uav-data` 是占位路径，应替换为持有使用权限的原始 `data` 目录。读取外部输入不会改动外部文件。
+-
+-```powershell
+-.\.venv\Scripts\python.exe -B run.py --list
+-# 安全的归档报告重算，不启动优化：
+-.\.venv\Scripts\python.exe -B run.py problem4_final_paper_results
+-# 只读 DEM 检查：
+-.\.venv\Scripts\python.exe -B run.py read_dem --raw-dir '.\authorized-uav-data'
+-```
+ 
+ 统一入口接受保留的 41 个脚本名。可从其他工作目录通过 `python <项目绝对路径>/run.py ...` 启动；命令行中显式给出的相对目录仍相对于调用者 CWD，内部默认路径相对于项目根。
+ 
+@@ -48,21 +40,124 @@
+ 
+ `reference`、raw/processed、隔离缓存及实验归档有 Python IO 写保护；输出 helper 拒绝当前独立运行目录以外的路径。问题四需要追加旧论文工作簿时先复制至 runs。`run.py` 拒绝重复使用已存在的运行目录。
+ 
++## A：已有结果复核与可视化
++
++以下命令在项目根目录执行。归档结果、部分图片及缓存仍被 Git 忽略；只取得公开源码时，不能假定这些本地输入也已包含。必须先具备获准使用的相应材料。
++
++```powershell
++# 已验证：列出 41 个入口，不启动实验。
++.\.venv\Scripts\python.exe -B run.py --list
++# Phase 3 已实际验证：利用本地冻结表重算 Q4 最终报告，不启动全枚举。
++.\.venv\Scripts\python.exe -B run.py problem4_final_paper_results
++# Phase 3 已实际验证：提供外部原始数据，只读检查 DEM。
++.\.venv\Scripts\python.exe -B run.py read_dem --raw-dir '.\authorized-uav-data'
++```
++
++Q4 报告在 Phase 3 的结果为 25 项检查通过，619 个单元格按 `1e-9` 绝对容差与归档一致，10 份 LaTeX 逐字节一致。它仍依赖已有 Q4 分区、筛选及辅助表；运行报告模块不等于重做任务枚举。Phase 4 额外验证了从项目外 CWD 调用 `run.py --list`，不代表全部 41 个入口都已从外部 CWD 端到端运行。
++
++```powershell
++# 静态检查通过、尚未执行：读取干净 Q3 VNS 表及相应地理输入绘图。
++.\.venv\Scripts\python.exe -B run.py plot_problem3_final_results --raw-dir '.\authorized-uav-data'
++```
++
++Q2 正式入口会执行 1000 次搜索后绘图，不能把 `problem2_final_run_and_visualization` 当作“仅绘制已有结果”的快速命令。所有新图、表及日志写入独立 runs，公开图像仍需另行审查来源、地理数据权限和个人信息。
++
+ ## 四个问题的运行关系
+ 
+ - 问题一：`problem1_segment_preprocessing` → `problem1_max_safe_payload` → `problem1_batch_optimization`。正式结果仍可作为后续步骤的只读基线。
+ - 问题二：`problem2_final_run_and_visualization` 是正式入口；1000 次、种子 20260927、权重 `(0.55,0.15,0.15,0.15)` 保持不变。它读取问题一正式批次及航段。扩展入口 `problem2_alns_final` 仍为原有 1500 次，不能当作正式入口。
+-- 问题三：通信检查/覆盖/精英池、`problem3_alns` 和 `problem3_vns` 各自保留；VNS 从 Q2 运输解恢复，不声称从 ALNS 最终结果启动。最终绘图和填表读取仅有 20 条有效运输架次的干净 VNS 工作簿。
++- 问题三：通信检查/覆盖/基线/精英池、`problem3_alns` 和 `problem3_vns` 各自保留；VNS 从 Q2 运输解恢复，不从 ALNS 最终结果启动。ALNS 默认 `--phase b` 实际为 500 次；其帮助文字中的“100-iteration”过时，见[已知问题](known_issues.md)。VNS 为 20 个循环。最终绘图和填表读取仅有 20 条有效运输架次的干净 VNS 工作簿。
+ - 问题四：`problem4_service_zone_graph`、`problem4_group_scheduler`、`problem4_full_enumeration` 及报告模块分别定位。通信区间明确读取 `results/reference/submission/结果提交.xlsx` 的 `Q3_通信保障`，没有伪造缺失的历史同名模板。
+ 
+-需要连续使用新中间结果时，逐步提供 `--input-dir`；未显式提供的其余文件仍按上表回退。示例仅说明数据连接，本轮未执行这些求解：
++`fill_q3_submission` 还需 `--template <获授权的结果提交模板.xlsx>`；仅填 Q3 页，不代表能够生成综合提交表全部内容。缺失模板会在耗时通信复核前报错。
++
++## 从原始输入构建中间依赖
++
++以下是 **B 模式：静态检查过接口与文件名、全链尚未执行**。会启动正式优化及高成本通信计算，应在另行评估计算预算后逐步运行。本阶段没有执行下面的求解命令。已有参数保持不变；不能因重新求解未得到归档答案而修改模型或预期值。
++
++在项目根目录的 PowerShell 中准备一个独立工作批次，`inputs/problemN` 仅汇集本批次产生的输入副本。辅助复制函数拒绝覆盖目标，校验源/目标 SHA-256，并登记来源；这些资料都留在被忽略的 runs 内。
+ 
+ ```powershell
+-python run.py problem1_segment_preprocessing --raw-dir '.\authorized-uav-data' --run-dir results/runs/q1_segments
+-python run.py problem1_max_safe_payload --raw-dir '.\authorized-uav-data' --input-dir results/runs/q1_segments
++$uavPython = (Resolve-Path '.\.venv\Scripts\python.exe').Path
++$uavRaw = '.\authorized-uav-data'
++$uavChain = Join-Path (Get-Location).Path ('results/runs/rebuild_' + [guid]::NewGuid().ToString('N'))
++$uavInputs = Join-Path $uavChain 'inputs'
++New-Item -ItemType Directory -Path "$uavInputs/problem1", "$uavInputs/problem2", "$uavInputs/problem3" | Out-Null
++
++function Copy-UavStageInput {
++    param([string]$Stage, [string]$Problem, [string]$Filename)
++    $source = Join-Path $uavChain "$Stage/$Problem/$Filename"
++    $target = Join-Path $uavInputs "$Problem/$Filename"
++    if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "缺少新产物：$source" }
++    if (Test-Path -LiteralPath $target) { throw "拒绝覆盖已有输入副本：$target" }
++    Copy-Item -LiteralPath $source -Destination $target
++    $sourceHash = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash
++    $targetHash = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash
++    if ($sourceHash -ne $targetHash) { throw '输入副本哈希不一致' }
++    [pscustomobject]@{Source=$source; Target=$target; SHA256=$sourceHash} |
++        Export-Csv -LiteralPath "$uavChain/input_copies.csv" -NoTypeInformation -Append -Encoding UTF8
++}
+ ```
+ 
+-`fill_q3_submission` 还需 `--template <获授权的结果提交模板.xlsx>`；仅填 Q3 页，不代表能够生成综合提交表全部内容。缺失模板会在耗时通信复核前报错。
++先生成并逐项汇集 Q1 三份产物，再运行 Q2。每条命令成功后才能执行紧随的复制；任一步失败，应停止并检查该运行的 `run_manifest.json`。
++
++```powershell
++& $uavPython -B run.py problem1_segment_preprocessing --raw-dir $uavRaw --run-dir "$uavChain/q1_segments"
++if ($LASTEXITCODE -ne 0) { throw 'Q1 航段步骤失败' }
++Copy-UavStageInput q1_segments problem1 segment_preprocessing.xlsx
++
++& $uavPython -B run.py problem1_max_safe_payload --raw-dir $uavRaw --input-dir $uavInputs --run-dir "$uavChain/q1_payload"
++if ($LASTEXITCODE -ne 0) { throw 'Q1 载荷步骤失败' }
++Copy-UavStageInput q1_payload problem1 problem1_max_safe_payload.xlsx
++
++& $uavPython -B run.py problem1_batch_optimization --raw-dir $uavRaw --input-dir $uavInputs --run-dir "$uavChain/q1_batches"
++if ($LASTEXITCODE -ne 0) { throw 'Q1 集合划分步骤失败' }
++Copy-UavStageInput q1_batches problem1 problem1_batch_optimization.xlsx
++
++& $uavPython -B run.py problem2_final_run_and_visualization --raw-dir $uavRaw --input-dir $uavInputs --run-dir "$uavChain/q2_formal"
++if ($LASTEXITCODE -ne 0) { throw 'Q2 正式 ALNS 失败' }
++Copy-UavStageInput q2_formal problem2 problem2_Z1_priority_result.xlsx
++```
++
++此时 `inputs/problem1` 同时包含航段、载荷和组批，`inputs/problem2` 包含本次 Q2 结果。只传 `q1_payload` 给后续流程会丢失前一步航段的覆盖路径，并可能退回冻结航段，这正是要避免的混用。请核对每次 manifest 的 `inputs` 路径和哈希；存在回退到 `results/reference` 的文件时，不应宣称该步骤完全来自新输入。
++
++Q3 的新输入需按“通信中断 → 中继覆盖 → 基线 → 精英池 → 新通信缓存”构建。下面继续使用同一 `$uavInputs`，不是改用每个阶段独立的输出根。
++
++```powershell
++& $uavPython -B run.py problem3_core --raw-dir $uavRaw --input-dir $uavInputs --run-dir "$uavChain/q3_communication"
++if ($LASTEXITCODE -ne 0) { throw 'Q3 通信中断检查失败' }
++Copy-UavStageInput q3_communication problem3 problem3_transport_communication_check.xlsx
++
++& $uavPython -B run.py problem3_relay --raw-dir $uavRaw --input-dir $uavInputs --run-dir "$uavChain/q3_coverage"
++if ($LASTEXITCODE -ne 0) { throw 'Q3 中继覆盖步骤失败' }
++Copy-UavStageInput q3_coverage problem3 problem3_relay_coverage.xlsx
++
++& $uavPython -B run.py problem3_baseline --raw-dir $uavRaw --input-dir $uavInputs --run-dir "$uavChain/q3_baseline"
++if ($LASTEXITCODE -ne 0) { throw 'Q3 基线步骤失败' }
++Copy-UavStageInput q3_baseline problem3 problem3_baseline.xlsx
++
++& $uavPython -B run.py problem3_alns --raw-dir $uavRaw --input-dir $uavInputs --run-dir "$uavChain/q3_elite" -- --phase a
++if ($LASTEXITCODE -ne 0) { throw 'Q3 精英池步骤失败' }
++Copy-UavStageInput q3_elite problem3 problem3_relay_elite_pool.xlsx
++
++& $uavPython -B run.py problem3_segment_communication_cache --raw-dir $uavRaw --input-dir $uavInputs --run-dir "$uavChain/q3_cache" -- --full --workers 1
++if ($LASTEXITCODE -ne 0) { throw 'Q3 新缓存构建失败' }
++$uavCache = Join-Path $uavChain 'q3_cache/problem3/problem3_communication_geometry_cache.pkl.gz'
++$uavCacheHash = (Get-FileHash -LiteralPath $uavCache -Algorithm SHA256).Hash
++```
++
++这些步骤仍带有竞赛算例约束：精英池保留固定基线候选，Phase A 核对基线目标，ALNS/VNS 核对固定暖启动目标和候选。新 Q2 解即使可行，也未必满足这些断言。失败后保留产物和错误，列入后续分析；不能取消断言或用旧数据补成“全链成功”。
++
++对于**刚刚由本地受信代码生成**的新缓存，下一进程显式传入路径与其 SHA。VNS 与 ALNS 是两个独立分支，均读取相同 Q2 运输基因；选择需要评估的一支运行，不应默认一起启动。
++
++```powershell
++# 静态检查通过、尚未执行：正式 VNS 分支，20 个循环。
++& $uavPython -B run.py problem3_vns --raw-dir $uavRaw --input-dir $uavInputs --run-dir "$uavChain/q3_vns" --cache-file $uavCache --cache-sha256 $uavCacheHash
++# 静态检查通过、尚未执行：另一个独立 ALNS 分支，默认 500 次。
++& $uavPython -B run.py problem3_alns --raw-dir $uavRaw --input-dir $uavInputs --run-dir "$uavChain/q3_alns" --cache-file $uavCache --cache-sha256 $uavCacheHash -- --phase b
++```
++
++Q4 全链还需把新 Q3 运输解、经复核的通信区间及相应辅助表连接起来。综合提交表的冻结映射只证明归档数据关系，不能自动用于变化后的新时序；在新提交表字段核验前，不把 Q4 归档报告命令当作新解的完整下游复现。该步骤仍需后续实施和验证。
+ 
+ ## 通信缓存
+ 
+@@ -70,13 +165,15 @@
+ 
+ 正式缓存有 135/210 条有向航段及 240 个候选，其余 75 条按原算法按需计算。现有签名函数没有改变；新增完整输入指纹属于读取前的来源检查。运行时先将受信缓存复制进本次 runs，再允许懒更新；不会更新 review_hold 原件。当前进程生成的缓存登记其哈希，跨进程复用新的非冻结缓存需要显式声明信任。
+ 
+-如确需完整重建，可在另行评估计算预算后运行：
++如果重新保存 Excel，即使数值相同，ZIP 元数据也可能使文件 SHA 改变；冻结缓存的 11 项输入指纹会拒绝这些新字节。这是来源保护的预期行为。新输入应建立独立缓存并显式传入可信来源及 SHA，方法见上节；不要修改冻结哈希、原签名算法或把新文件冒充原件。
++
++如只使用冻结中间输入、确需完整重建缓存，可在另行评估计算预算后运行以下**静态检查通过、尚未执行**的命令：
+ 
+ ```powershell
+-python run.py problem3_segment_communication_cache --raw-dir '.\authorized-uav-data' -- --full --workers 1
++.\.venv\Scripts\python.exe -B run.py problem3_segment_communication_cache --raw-dir '.\authorized-uav-data' -- --full --workers 1
+ ```
+ 
+-依赖还包括 Q1 航段、Q2 正式结果和 Q3 精英池。归档 manifest 记录部分缓存累计预处理 `5606.644827` 秒，不能视为当前机器完整重建时间。默认不加 `--full` 会计算 10 条最长航段 benchmark，也不是纯读取检查。本轮两者均未执行。
++依赖还包括 Q1 航段、Q2 正式结果和 Q3 精英池。归档 manifest 记录部分缓存累计预处理 `5606.644827` 秒，不能视为当前机器完整重建时间。默认不加 `--full` 会计算 10 条最长航段 benchmark，也不是纯读取检查。Phase 3、4 都未执行完整构建或 benchmark。
+ 
+ `problem3_weight_experiment` 的历史 case_1 独立缓存没有随 Phase 2 复制，当前阻塞；不能用正式缓存默默替代。原始长实验日志还保留中断证据，不能称为完成的权重实验。
+ 
+@@ -89,4 +186,13 @@
+ .\.venv\Scripts\python.exe -B -m unittest discover -s tests -v
+ ```
+ 
+-测试输出只进入 runs；不运行 ALNS/VNS、全分区枚举或通信几何重建。不提供外部数据时，相关两项测试明确 skip；Gurobi 环境或许可不可用时模型构建项明确 skip，不将跳过计作验证通过。详细实际结果见 Phase 3 报告。
++测试输出只进入 runs；不运行 ALNS/VNS、全分区枚举或通信几何重建。不提供外部数据时，相关两项测试明确 skip；Gurobi 环境或许可不可用时模型构建项明确 skip，不将跳过计作验证通过。
++
++Phase 3 实际记录为 15 项全部通过、47.509 s；Phase 4 在显式配置外部原始数据的同一环境回归，15 项全部通过、87.017 s，0 失败、0 错误、0 跳过。模块导入检查覆盖 41 个模块；测试中的缓存核验与 Q4 资源计数不等于优化重跑。具体日志位置与本轮验收见 [Phase 4 报告](phase4_report.md)。
++
++| 状态 | 范围 |
++|---|---|
++| 已验证通过 | 入口列举、外部 CWD 的入口列举、15 项轻量回归；Phase 3 的 DEM 读取与 Q4 归档报告 |
++| 静态检查通过、尚未执行 | 本页的完整重算连接方式、Q3 绘图、Q1/Q2/Q3 搜索及通信重建命令 |
++| 尚未执行 | 空白环境安装、其他 Python/操作系统、全链端到端结果比较 |
++| 存在阻塞 | 未随公开候选分发的数据/结果/缓存及授权；Q3 独立权重实验缺失缓存；新解进入 Q3 固定基准断言及 Q4 通信映射尚需核验 |
+--- /dev/null
++++ b/experiments/README.md
+@@ -0,0 +1,68 @@
++# 扩展实验与历史结果
++
++本目录保存正式主流程之外的基线、参数分析、稳定性检查及备选算法。历史工作簿用于解释实验设计和追溯结论；Phase 3 只验证了工程入口、导入和部分数据读取，没有重新执行这些搜索。名称中出现 `final` 或 `formal` 不足以认定为当前正式版本，应以 [正式版本清单](../docs/formal_versions.json) 为准。
++
++实验输出位于 `results/runs/<运行标识>/problemN/`。本目录的 `problemN/results/` 是只读历史归档，因衍生数据权限和文件元数据仍待审核，已被 Git 忽略；公开候选源码中不附带这些工作簿。来源与原始哈希见 [provenance.csv](../docs/provenance.csv)，公开审核见 [review_required.csv](../docs/review_required.csv)。
++
++## 正式主流程边界
++
++| 问题 | 当前正式入口或结果 | 与扩展实验的区别 |
++|---|---|---|
++| 问题一 | `src/problem1/` 的航段预处理、最大安全载荷、集合划分 | BFD 是对照基线，安全余量分析是多情景重算，均非集合划分的必经前置步骤 |
++| 问题二 | [problem2_final_run_and_visualization.py](../src/problem2/problem2_final_run_and_visualization.py) | 1000 次迭代、种子 20260927、权重 `(0.55, 0.15, 0.15, 0.15)`；不等于本目录的 1500 次包装器 |
++| 问题三 | [problem3_vns.py](../src/problem3/problem3_vns.py)，正式归档 `problem3_vns_20cycles.xlsx` | VNS 从问题二正式结果恢复运输基因，不能解释为直接接续归档 ALNS 最优解 |
++| 问题四 | [problem4_full_enumeration.py](../src/problem4/problem4_full_enumeration.py) 与最终方案报告 | 固定问题三时序的完整分区枚举和资源分析；当前没有单独的扩展实验目录 |
++
++## 问题一：组批基线与返航余量
++
++| 脚本 | 实验内容 | 历史归档与解释范围 |
++|---|---|---|
++| [problem1_bfd_batching.py](problem1/problem1_bfd_batching.py) | Best Fit Decreasing 组批基线，受载荷、体积和能源可行性约束 | `problem1/results/problem1_bfd_batching.xlsx`；启发式基线不提供集合划分的最优性证明 |
++| [problem1_safety_margin_analysis.py](problem1/problem1_safety_margin_analysis.py) | 返航安全余量 `rho=0, 0.05, …, 0.30`；基准为 `0.20`，各情景重新计算载荷和组批 | `problem1/results/problem1_safety_margin_analysis.xlsx`；属于改变实验情景后的敏感性分析，不替换正式参数 |
++
++`problem1/results/problem1_batch_candidates.xlsx` 保留候选批次证据。正式集合划分结果仍在 `results/reference/problem1/`，不得用实验输出覆盖。安全余量实验调用 Gurobi 多次求解，不属于轻量数据复核。
++
++## 问题二：迭代深度、随机种子和备选算法
++
++| 脚本 | 分类与配置 | 归档或限制 |
++|---|---|---|
++| [problem2_alns_iteration_convergence.py](problem2/problem2_alns_iteration_convergence.py) | 收敛实验：1000 次、种子 20260924、均衡权重 `(0.25, 0.25, 0.25, 0.25)` | `problem2_alns_iteration_convergence.xlsx` 和 `problem2_alns_iteration_trace.csv`；120/500/1000 是同一随机轨迹的检查点，不是三次独立实验 |
++| [problem2_alns_5seed_stability.py](problem2/problem2_alns_5seed_stability.py) | 稳定性：20260924—20260928 五个种子，各 1000 次，沿用均衡权重 | `problem2_alns_5seed_stability.xlsx`、汇总/轨迹 CSV 及 `alns_5seed_runs/`；20260924 复用已有收敛记录，另外四个种子独立运行 |
++| [problem2_alns_search_diagnostics.py](problem2/problem2_alns_search_diagnostics.py) | 搜索机制诊断：排序下降时机、模拟退火轨迹、破坏比例及迭代深度 | 保留实现，当前副本未纳入该脚本的独立结果目录；不能据此宣称各配置已复现 |
++| [problem2_alns_final.py](problem2/problem2_alns_final.py) | 历史均衡权重包装器：源码实际为 **1500 次**、种子 20260927 | 文件名和旧注释不能代替参数核对；不是正式问题二入口 |
++| [problem2_lambda_sensitivity.py](problem2/problem2_lambda_sensitivity.py) | 权重敏感性：一个均衡基线和四个目标优先情景 | 当前继承上述 **1500 次**参数；均衡基线从历史结果读取，未在每次运行中重算 |
++| [problem2_nsga2.py](problem2/problem2_nsga2.py) | NSGA-II 多目标备选算法 | `problem2_nsga2_result.xlsx`；延误指标与正式 ALNS 的统计范围不同，不能直接排名 |
++| [problem2_cpsat_resource_refinement.py](problem2/problem2_cpsat_resource_refinement.py) | 固定架次结构的 OR-Tools CP-SAT 资源调度概念验证 | `problem2_cpsat_resource_refinement_result.xlsx`；不是正式 ALNS 内层，也不是问题二主要求解方法 |
++
++上表中的问题二工作簿/CSV 均在 `problem2/results/`。以下比较边界应随实验表一起保留：
++
++- **1000 与 1500 次不能混用。** 历史权重表同时保留 `problem2_lambda_sensitivity 20260924 1704-1000.xlsx` 和 `problem2_lambda_sensitivity 1500.xlsx`。两表的 Z1 优先情景分别为 `Cmax=6955.47652001904 s` 与 `7021.476520019036 s`；正式结果采用前一组对应的 1000 次正式入口。历史文件名不保证当前脚本仍能重建对应版本。
++- **均衡权重的五种子实验不能当作正式延误优先配置的五次验证。** `problem2_alns_5seed_stability.xlsx/Summary` 给出了五条历史记录；首个种子的 `Final_Solution_Detail_Saved=False`，复用汇总和轨迹不代表该表保存了全部五个最终解明细。
++- **NSGA-II 的 Z1 范围较窄。** `evaluate_objectives()` 只累加没有硬截止约束的货箱；正式 ALNS 对全部货箱按紧急优先系数加权期望时刻延误。各自得到的 Z1 和综合表现不能在未统一口径时直接解释为优劣。
++- **CP-SAT 固定运输结构。** 读取 `problem2_alns_repair_optimized_result.xlsx`，固定货箱集合、访问顺序和机型，仅调整实体无人机、同型共享电池和开始时刻。时间离散为 0.01 s，时长/偏移向上取整、截止时间向下取整；默认时限 60 s、8 workers。它没有联合搜索新的运输路径，不能包装为正式流程的全局最优解。
++- **不同权重下的 F 不直接可比。** 权重表列名为 `F_under_own_weights`；应并列查看原始目标向量、可行性与计算预算。
++
++## 问题三：后评价与未完成的权重重求解
++
++| 脚本 | 实际作用 | 归档状态 |
++|---|---|---|
++| [problem3_posthoc_weight_tradeoff.py](problem3/problem3_posthoc_weight_tradeoff.py) | 读取已完成且存有最终检查记录的目标向量，去重、Pareto 筛选，再按四组权重评分；不调用 ALNS/VNS 或通信重算 | `problem3/results/problem3_posthoc_weight_tradeoff.xlsx` 已归档 |
++| [problem3_weight_experiment.py](problem3/problem3_weight_experiment.py) | 各权重分别搜索；当前配置为 ALNS 100 次、VNS 5 轮、种子 20260925 | 整组实验未完成，且当前缺少历史 case_1 独立通信缓存及 manifest，不能宣称可完整重跑 |
++
++后评价归档 `Counts` 表记录：扫描 1185 条含目标信息的记录，5 条最终检查记录符合纳入条件，去重后为 4 个目标向量，其中 2 个非支配向量。ALNS/VNS 的 LEVEL1 历史记录、中断日志和几何缓存不作为独立精审解纳入；只有对应的最终检查记录可以进入候选池。这里的“精审”指代码中的 LEVEL2 数值通信检查，不是任意连续时刻通信可用性的解析证明。
++
++四组权重在这个有限候选池内均选择 `P3-VNS-20-FINAL`，只支持“现有候选的再评分结果”，不支持“改变权重重新优化仍得到同一最优解”。`problem3/results/weight_tradeoff_100iter/case_1/case_1_alns.xlsx` 保存了一次完成的 100 轮 ALNS 结果，不能据此宣称四组 ALNS+VNS 全部完成。另有历史长实验在 458 次迭代中断，相关日志仅保留在本地待审证据区。
++
++正式 ALNS 源码还保留一个已知口径问题：`FORMAL_WARM_F` 用四项等权 `0.25` 计算，默认搜索权重是 `(0.55, 0.15, 0.15, 0.15)`。该常量参与初始温度与最终基准比较，可能影响搜索及“改善”判断；本轮没有修改。展示时应报告同口径的原始目标向量，不能把两个权重体系的 F 之差当作算法性能提升。
++
++## 运行与复核
++
++所有脚本都可由根目录 `run.py` 按脚本名定位；输入、缓存信任和隔离输出规则见 [运行说明](../docs/running.md)。CP-SAT 另需 `requirements-experiments.txt` 中的 OR-Tools。大多数实验会启动搜索，不能把 `run.py` 下存在入口视作轻量复核命令。
++
++以下仅列出后评价命令，其不会搜索或重建通信几何；需要本地待审归档齐全。执行状态以 [Phase 4 报告](../docs/phase4_report.md) 为准：
++
++```powershell
++.\.venv\Scripts\python.exe -B run.py problem3_posthoc_weight_tradeoff
++```
++
++未重新运行的扩展实验保留历史结果和方法说明，不提供新的耗时、性能提升、显著性或跨机器复现结论。后续若开展比较，应先固定目标口径、随机种子、迭代/时间预算和输入哈希，再将新结果写入独立 runs 目录。
+--- a/results/runs/README.md
++++ b/results/runs/README.md
+@@ -1,5 +1,11 @@
+ # 新运行输出
+ 
+-后续全部新实验应写入本目录下独立的运行子目录；当前 Phase 2 尚未修改算法输出路径，不能认为该规则已接入源码。
++Phase 3 已将全部 41 个原有脚本的默认输出接入本目录。推荐通过项目根的 `run.py` 启动，每次创建独立运行子目录；指定 `--run-dir` 时，只接受本目录内尚不存在的目录，拒绝覆盖上次运行。
+ 
+-禁止将新结果覆盖到 `results/reference`。本目录生成内容默认被 Git 忽略。
++每次统一入口运行保存 `run_manifest.json`，记录参数、源码和实际输入/输出哈希、环境版本及成功或失败状态。它可能包含本机绝对路径，连同图表、缓存、日志和预备输入默认被 Git 忽略。
++
++正式结果始终保留在 `results/reference/`，只读核验，不能用新结果覆盖。新工作簿与冻结结果数值一致，也不代表文件字节一致。
++
++`--input-dir` 只支持一个输入根，不会自动合并历次运行。连续重算时，应在本目录内另建 `inputs/problemN` 汇集并校验自己生成的中间文件，避免缺项时意外回退至冻结表；示例与验证状态见 [运行说明](../../docs/running.md#从原始输入构建中间依赖)。
++
++Phase 4 仅执行轻量回归与文档检查，没有启动 ALNS/VNS、大规模通信缓存构建或完整分区枚举。运行记录不代表材料已经获准公开。

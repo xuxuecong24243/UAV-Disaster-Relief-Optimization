@@ -1,0 +1,683 @@
+{
+  "date": "2026-10-16",
+  "assessment": {
+    "source_original_text_numeric_summary": "READY",
+    "entire_local_directory_distribution": "BLOCKED",
+    "full_optimization_reproduction": "NOT_RUN",
+    "source_authorship": "user_sole_author_confirmed",
+    "license_added": false,
+    "remote_operations": false
+  },
+  "environment": {
+    "python": "3.9.10",
+    "isolated_prefix": true,
+    "user_site_enabled": false,
+    "packages": {
+      "numpy": {
+        "version": "2.0.2",
+        "requires_python": ">=3.9",
+        "inside_isolated_env": true
+      },
+      "pandas": {
+        "version": "2.3.3",
+        "requires_python": ">=3.9",
+        "inside_isolated_env": true
+      },
+      "matplotlib": {
+        "version": "3.9.4",
+        "requires_python": ">=3.9",
+        "inside_isolated_env": true
+      },
+      "openpyxl": {
+        "version": "3.1.5",
+        "requires_python": ">=3.8",
+        "inside_isolated_env": true
+      },
+      "rasterio": {
+        "version": "1.4.3",
+        "requires_python": ">=3.9",
+        "inside_isolated_env": true
+      },
+      "pyproj": {
+        "version": "3.6.1",
+        "requires_python": ">=3.9",
+        "inside_isolated_env": true
+      },
+      "gurobipy": {
+        "version": "12.0.3",
+        "requires_python": ">=3.9",
+        "inside_isolated_env": true
+      },
+      "networkx": {
+        "version": "3.2.1",
+        "requires_python": ">=3.9",
+        "inside_isolated_env": true
+      },
+      "affine": {
+        "version": "3.0.1",
+        "requires_python": ">=3.9",
+        "inside_isolated_env": true
+      },
+      "Pillow": {
+        "version": "11.3.0",
+        "requires_python": ">=3.9",
+        "inside_isolated_env": true
+      },
+      "ortools": {
+        "version": "9.15.6755",
+        "requires_python": ">= 3.9",
+        "inside_isolated_env": true
+      }
+    },
+    "pip_check_exit": 0,
+    "pip_check_output": "No broken requirements found.\n"
+  },
+  "installation": {
+    "first_main_attempt": {
+      "command": "python -B -m pip install -r requirements.txt",
+      "exit_code": 2,
+      "seconds": 2.2498549999999997,
+      "environment": ".release-audit/phase5/env",
+      "isolated_from_global": true
+    },
+    "main_retry": {
+      "command": "python -B -m pip install -r requirements.txt",
+      "exit_code": 0,
+      "seconds": 307.3996277,
+      "process_local_proxy_override": true,
+      "environment": ".release-audit/phase5/env"
+    },
+    "optional": {
+      "command": "python -B -m pip install -r requirements-experiments.txt",
+      "exit_code": 0,
+      "seconds": 33.635840699999996,
+      "process_local_proxy_override": true,
+      "environment": ".release-audit/phase5/env"
+    },
+    "system_python_modified": false,
+    "system_proxy_modified": false,
+    "tls_verification_disabled": false
+  },
+  "static": {
+    "python39_syntax_files": 46,
+    "unchanged_original_python": 44,
+    "scipy_imported": false
+  },
+  "tests": {
+    "baseline": {
+      "passed": 15,
+      "skipped": 0,
+      "failed": 0,
+      "unittest_seconds": 110.323,
+      "exit_code": 0
+    },
+    "protection": {
+      "passed": 6,
+      "skipped": 0,
+      "failed": 0,
+      "unittest_seconds": 38.742,
+      "exit_code": 0
+    },
+    "source_only": {
+      "copied_text_files": 89,
+      "reference_raw_cache_included": false,
+      "results": [
+        {
+          "name": "list",
+          "exit_code": 0,
+          "seconds": 0.2884213,
+          "entries": 41
+        },
+        {
+          "name": "protection",
+          "exit_code": 0,
+          "seconds": 49.3444134,
+          "summary": "----------------------------------------------------------------------\nRan 6 tests in 48.533s\n\nOK\n"
+        },
+        {
+          "name": "imports",
+          "exit_code": 0,
+          "seconds": 43.62420319999999,
+          "imported": 41
+        }
+      ]
+    }
+  },
+  "level3": {
+    "status": "PASS",
+    "checks": [
+      {
+        "id": "all_36_frozen_hashes",
+        "status": "PASS",
+        "detail": null
+      },
+      {
+        "id": "q1_18_batches_80_boxes_once",
+        "status": "PASS",
+        "detail": null
+      },
+      {
+        "id": "q1_assignment_mapping",
+        "status": "PASS",
+        "detail": null
+      },
+      {
+        "id": "q1_energy_and_cumulative_time",
+        "status": "PASS",
+        "detail": null
+      },
+      {
+        "id": "q1_row_components",
+        "status": "PASS",
+        "detail": null
+      },
+      {
+        "id": "q2_20_sorties_80_boxes_once",
+        "status": "PASS",
+        "detail": null
+      },
+      {
+        "id": "q2_delivery_mapping_and_input_fields",
+        "status": "PASS",
+        "detail": null
+      },
+      {
+        "id": "q2_box_delays_recomputed",
+        "status": "PASS",
+        "detail": null
+      },
+      {
+        "id": "q2_hard_deadlines_from_q1_box_metadata",
+        "status": "PASS",
+        "detail": []
+      },
+      {
+        "id": "q2_objective_reaggregation",
+        "status": "PASS",
+        "detail": null
+      },
+      {
+        "id": "q2_battery_schedule_matches_sorties",
+        "status": "PASS",
+        "detail": null
+      },
+      {
+        "id": "q2_uav_intervals",
+        "status": "PASS",
+        "detail": {
+          "resource_count": 8,
+          "conflicts": [],
+          "tolerance_s": 1e-06
+        }
+      },
+      {
+        "id": "q2_battery_intervals",
+        "status": "PASS",
+        "detail": {
+          "resource_count": 14,
+          "conflicts": [],
+          "tolerance_s": 1e-06
+        }
+      },
+      {
+        "id": "q2_archived_16_pass_flags",
+        "status": "PASS",
+        "detail": "Archived flags, not rerunning every feasibility function"
+      },
+      {
+        "id": "q3_clean_20_transport_80_boxes",
+        "status": "PASS",
+        "detail": null
+      },
+      {
+        "id": "q3_joint_objective_reaggregation",
+        "status": "PASS",
+        "detail": null
+      },
+      {
+        "id": "q3_relay_energy_components",
+        "status": "PASS",
+        "detail": null
+      },
+      {
+        "id": "q3_transport_uav_intervals",
+        "status": "PASS",
+        "detail": {
+          "resource_count": 8,
+          "conflicts": [],
+          "tolerance_s": 1e-06
+        }
+      },
+      {
+        "id": "q3_transport_battery_intervals",
+        "status": "PASS",
+        "detail": {
+          "resource_count": 14,
+          "conflicts": [],
+          "tolerance_s": 1e-06
+        }
+      },
+      {
+        "id": "q3_relay_uav_intervals",
+        "status": "PASS",
+        "detail": {
+          "resource_count": 2,
+          "conflicts": [],
+          "tolerance_s": 1e-06
+        }
+      },
+      {
+        "id": "q3_relay_component_intervals",
+        "status": "PASS",
+        "detail": {
+          "resource_count": 3,
+          "conflicts": [],
+          "tolerance_s": 1e-06
+        }
+      },
+      {
+        "id": "q3_physical_resource_counts",
+        "status": "PASS",
+        "detail": [
+          8,
+          14,
+          2,
+          3
+        ]
+      },
+      {
+        "id": "q3_archived_13_pass_flags",
+        "status": "PASS",
+        "detail": "Archive only; radio geometry not rerun. First flag does not prove Q2 route identity."
+      },
+      {
+        "id": "q3_submitted_communication_schema",
+        "status": "PASS",
+        "detail": null
+      },
+      {
+        "id": "q3_submitted_intervals_cover_flight_windows",
+        "status": "PASS",
+        "detail": {
+          "max_boundary_difference_s": 1.000444171950221e-11,
+          "geometry_recomputed": false
+        }
+      },
+      {
+        "id": "q3_relay_intervals_match_service_windows",
+        "status": "PASS",
+        "detail": null
+      },
+      {
+        "id": "q3_submission_relay_rows_match",
+        "status": "PASS",
+        "detail": null
+      },
+      {
+        "id": "q4_seven_components_from_routes",
+        "status": "PASS",
+        "detail": [
+          [
+            "S001",
+            "S002",
+            "S005",
+            "S010",
+            "S012"
+          ],
+          [
+            "S003",
+            "S006",
+            "S007",
+            "S015"
+          ],
+          [
+            "S004"
+          ],
+          [
+            "S008",
+            "S011"
+          ],
+          [
+            "S009"
+          ],
+          [
+            "S013"
+          ],
+          [
+            "S014"
+          ]
+        ]
+      },
+      {
+        "id": "q4_126_subset_masks_complete",
+        "status": "PASS",
+        "detail": null
+      },
+      {
+        "id": "q4_subset_zone_membership",
+        "status": "PASS",
+        "detail": null
+      },
+      {
+        "id": "q4_k2_partition_completeness",
+        "status": "PASS",
+        "detail": {
+          "independent_count": 63,
+          "archived_rows": 63
+        }
+      },
+      {
+        "id": "q4_k2_pareto_independent_recalculation",
+        "status": "PASS",
+        "detail": {
+          "dimensions": [
+            "R_U_A",
+            "R_U_B",
+            "R_U_C",
+            "R_B_A",
+            "R_B_B",
+            "R_B_C",
+            "R_R",
+            "R_E",
+            "B_Q",
+            "B_M",
+            "B_V",
+            "B_N_sortie",
+            "B_T_transport",
+            "B_T_comm"
+          ],
+          "tolerance": 1e-10,
+          "count": 27
+        }
+      },
+      {
+        "id": "q4_k2_resource_column_sums",
+        "status": "PASS",
+        "detail": null
+      },
+      {
+        "id": "q4_k2_balance_recalculation",
+        "status": "PASS",
+        "detail": {
+          "max_error": 8.881784197001252e-16
+        }
+      },
+      {
+        "id": "q4_k3_partition_completeness",
+        "status": "PASS",
+        "detail": {
+          "independent_count": 301,
+          "archived_rows": 301
+        }
+      },
+      {
+        "id": "q4_k3_pareto_independent_recalculation",
+        "status": "PASS",
+        "detail": {
+          "dimensions": [
+            "R_U_A",
+            "R_U_B",
+            "R_U_C",
+            "R_B_A",
+            "R_B_B",
+            "R_B_C",
+            "R_R",
+            "R_E",
+            "B_Q",
+            "B_M",
+            "B_V",
+            "B_N_sortie",
+            "B_T_transport",
+            "B_T_comm"
+          ],
+          "tolerance": 1e-10,
+          "count": 58
+        }
+      },
+      {
+        "id": "q4_k3_resource_column_sums",
+        "status": "PASS",
+        "detail": null
+      },
+      {
+        "id": "q4_k3_balance_recalculation",
+        "status": "PASS",
+        "detail": {
+          "max_error": 1.3322676295501878e-15
+        }
+      },
+      {
+        "id": "q4_entry_uses_frozen_inputs",
+        "status": "PASS",
+        "detail": null
+      },
+      {
+        "id": "q4_1008_resource_counts",
+        "status": "PASS",
+        "detail": {
+          "comparisons": 1008,
+          "differences": [],
+          "load_and_calculation_seconds": 3.116089599999995
+        }
+      },
+      {
+        "id": "reference_bytes_unchanged_after_audit",
+        "status": "PASS",
+        "detail": null
+      }
+    ],
+    "check_count": 41,
+    "failures": 0,
+    "runtime_seconds": 37.8666894,
+    "metrics": {
+      "q1": {
+        "sorties": 18,
+        "boxes": 80,
+        "energy_kwh": 59.12869078354451,
+        "cumulative_operation_s": 32776.01574891615
+      },
+      "q2": {
+        "sorties": 20,
+        "boxes": 80,
+        "weighted_delay_s": 0,
+        "makespan_s": 6955.47652001904,
+        "energy_kwh": 65.63553171888572,
+        "uav": 8,
+        "batteries": 14
+      },
+      "q3": {
+        "transport_sorties": 20,
+        "relay_sorties": 3,
+        "transport_energy_kwh": 65.5984982740489,
+        "relay_energy_kwh": 3.172597364466959,
+        "joint_energy_kwh": 68.77109563851585,
+        "joint_makespan_s": 6985.31006777659,
+        "resources": [
+          8,
+          14,
+          2,
+          3
+        ],
+        "archived_weighted_delay_s": 0,
+        "archived_uncovered_communication_s": 0,
+        "sample_step_s": 1.0,
+        "detected_transition_tolerance_s": 0.01,
+        "geometry_recomputed": false
+      },
+      "q4": {
+        "k2": {
+          "partitions": 63,
+          "pareto": 27
+        },
+        "k3": {
+          "partitions": 301,
+          "pareto": 58
+        }
+      }
+    },
+    "source_sha256": {
+      "results/reference/problem1/problem1_batch_optimization.xlsx": "99d6e5a6324f79729bdb92bdf18d417f9f80bac067631a8a4c8bf36298f995d6",
+      "results/reference/problem2/problem2_Z1_priority_result.xlsx": "ec60632be1c53609145637e42a5acaf763d41cc3072214527ce91a0628e7fd34",
+      "results/reference/problem3/problem3_vns_20cycles.xlsx": "35436faa67ba582a419efc2fdb0b320ceccd08ec2c0eb86d2c3965b464b3104b",
+      "results/reference/submission/结果提交.xlsx": "2ca00496f460b0b0a8e3e55d08dc0b4937e7b46cd4d3691422697ba0e38a0cc2",
+      "results/reference/problem4/group_subset_results.xlsx": "03c806f4df8c815d899af6623a3839b9a3ed5b24f9763726df5656ad1681ca2d",
+      "results/reference/problem4/problem4_K2_all.xlsx": "a5196ef7eaf41dcd08a6f71dc8d861f12ce37555bf1213b7c7a48ffc40555f0c",
+      "results/reference/problem4/problem4_K2_pareto.xlsx": "7be8485aaf2ad5ca5a6adc55e375804de818014bd5af07feae0ad64c4339e620",
+      "results/reference/problem4/problem4_K3_all.xlsx": "daf14e7f91f0ccc59910159e29b98d3d88e4da94f2c906257b7ab7e5627287bb",
+      "results/reference/problem4/problem4_K3_pareto.xlsx": "7b17fc4569e4708a55fd4c5cb3d13790c8f92c50bc63f2234ce03ceba0d04dc1",
+      "external_raw/物资需求与配送时限.xlsx": "5a3346159ceddcf585859d270b8f62114b388a1f737fbe64ffde0ee1fdc8170a"
+    },
+    "reference_sha256": {
+      "results/reference/problem1/problem1_batch_optimization.xlsx": "99d6e5a6324f79729bdb92bdf18d417f9f80bac067631a8a4c8bf36298f995d6",
+      "results/reference/problem1/problem1_max_safe_payload.xlsx": "d5f33be689465b5fb0267e181d88e80e0f7958cae39bb2d242e683eaeaedbb8f",
+      "results/reference/problem1/segment_preprocessing.xlsx": "107d0a6fadb1b63c017bfe460cc63fb3d4f4a8c2b735e010196c8275828e8cc5",
+      "results/reference/problem2/problem2_Z1_priority_result.xlsx": "ec60632be1c53609145637e42a5acaf763d41cc3072214527ce91a0628e7fd34",
+      "results/reference/problem3/problem3_alns_final.xlsx": "72a7705e21fea02a4ab588b7992443c18765352b03b5496d8b876d85650edfea",
+      "results/reference/problem3/problem3_baseline.xlsx": "19472e7ed5e8b41d026949c209fc4abd04e5816ed838124d6570f889e0863f01",
+      "results/reference/problem3/problem3_relay_coverage.xlsx": "eb91659f75c64bafe038a159a6193d2962eb583eb68f34cdcbb16160a3af7a12",
+      "results/reference/problem3/problem3_relay_elite_pool.xlsx": "4d2bfcb0d8414f36827063b63e64401e2245821f173c7c16ac3075b83d774fe9",
+      "results/reference/problem3/problem3_transport_communication_check.xlsx": "ce5ff97ada88603c8657597a1862ee5dd7db4b689e3682d1454b9476f0168af1",
+      "results/reference/problem3/problem3_vns_20cycles.xlsx": "35436faa67ba582a419efc2fdb0b320ceccd08ec2c0eb86d2c3965b464b3104b",
+      "results/reference/problem4/final_paper_tables/table10_relay_duplication.tex": "cc2613c17449da005720b9ab3bf16f51bbdca7af4e027754dcfe9be0b67d3c7f",
+      "results/reference/problem4/final_paper_tables/table1_task_blocks.tex": "1dec8ea1aeb377dee24330ba72f3343435b24adc8fba8708af45d94769954d2f",
+      "results/reference/problem4/final_paper_tables/table2_final_partition.tex": "1c2dd972c59a90b9a7b4c2f0ef61f2e10e0cde7e73f921aecc79a6cbba082b88",
+      "results/reference/problem4/final_paper_tables/table3_group_workload.tex": "414af5e739da76d39fff91e3e226ab06f88f062eb6a1fcdf371b177726c36567",
+      "results/reference/problem4/final_paper_tables/table4_group_resources.tex": "9b1ee5400b7d1debe850402d5f88e4d8cb549caedbfbbd3bfa063c5e905a7c5a",
+      "results/reference/problem4/final_paper_tables/table5_resource_gap.tex": "73905122e9d9037618bdef9c061a1d5ec91cb4bc92b5b56b0501bafb20decea9",
+      "results/reference/problem4/final_paper_tables/table6_execution_performance.tex": "24c35cd59ff90cdea3220684004b87b92ae904ee4e4a444e8ab5daf36a349931",
+      "results/reference/problem4/final_paper_tables/table7_balance.tex": "d9832fa6cd8d247ed6d3359af2ff57037633d017197d4deab6e31cdb3bb0bc19",
+      "results/reference/problem4/final_paper_tables/table8_overall_comparison.tex": "eeed913c232c6c5ad93ee9e020c951ddc41b5233a341829cc9beefb6fba40035",
+      "results/reference/problem4/final_paper_tables/table9_selection_process.tex": "7a2907bc085a54f4e8e80f8ea2f28753035021590ae2d73c04b6f8f4899bfc15",
+      "results/reference/problem4/group_subset_results.xlsx": "03c806f4df8c815d899af6623a3839b9a3ed5b24f9763726df5656ad1681ca2d",
+      "results/reference/problem4/problem4_K2_all.xlsx": "a5196ef7eaf41dcd08a6f71dc8d861f12ce37555bf1213b7c7a48ffc40555f0c",
+      "results/reference/problem4/problem4_K2_pareto.xlsx": "7be8485aaf2ad5ca5a6adc55e375804de818014bd5af07feae0ad64c4339e620",
+      "results/reference/problem4/problem4_K3_all.xlsx": "daf14e7f91f0ccc59910159e29b98d3d88e4da94f2c906257b7ab7e5627287bb",
+      "results/reference/problem4/problem4_K3_pareto.xlsx": "7b17fc4569e4708a55fd4c5cb3d13790c8f92c50bc63f2234ce03ceba0d04dc1",
+      "results/reference/problem4/problem4_energy_makespan_verification.xlsx": "79476b7c0b0060281fe34b072b2cea4bf804035c5134f812db3bdd064a3e6df1",
+      "results/reference/problem4/problem4_final_candidate_comparison.xlsx": "a6dcacbc815154f2901c431d6dc032b80a32ec0efb6fc1d151691d309baba89f",
+      "results/reference/problem4/problem4_final_paper_results.xlsx": "09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512",
+      "results/reference/problem4/problem4_final_selection_analysis.xlsx": "859a00a98c1ef75d7511541debdbd75ab526db10652ead946cb36fc6057121c4",
+      "results/reference/problem4/problem4_paper_tables.xlsx": "281148ba0b4e38f23c75174a6147d3a700ae1885b6defafa43277e6cb17d966f",
+      "results/reference/problem4/problem4_phase456_validation.xlsx": "38ad3ea2d2fa4aa8601c754b9d78313cfa8b41ea7d8e07333185bf1ab8cc2f52",
+      "results/reference/problem4/problem4_representative.xlsx": "cfa58c489aa0dfc1aa073eb0dd329ebcbdb39f4b1699a80d7ac176ce0094fc64",
+      "results/reference/problem4/relay_duplication_analysis.xlsx": "b0448e9c1026ad3d9e1c21d039148567344a4db126c59c8ee17ca3636dc17e16",
+      "results/reference/problem4/relay_resource_reuse_validation.xlsx": "9d730bb0c61b8bea5f36b48b149f289f70d0973c6ac3320adfd88838cb774d5a",
+      "results/reference/problem4/service_zone_components.xlsx": "a47a5342264b6da3ef5bad4399668c7d198d3d59cb5ee9a41bbc0a8fc7c5dfbd",
+      "results/reference/submission/结果提交.xlsx": "2ca00496f460b0b0a8e3e55d08dc0b4937e7b46cd4d3691422697ba0e38a0cc2"
+    },
+    "radio_geometry_recomputed": false
+  },
+  "nonoptimization_runs": [
+    {
+      "target": "read_dem",
+      "exit_code": 0,
+      "seconds": 3.3445532,
+      "cwd": "outside project root",
+      "status": "completed",
+      "inputs": 1,
+      "outputs": 0,
+      "manifest": "results/runs/phase5_read_dem/run_manifest.json"
+    },
+    {
+      "target": "problem4_final_paper_results",
+      "exit_code": 0,
+      "seconds": 26.8668782,
+      "cwd": "outside project root",
+      "status": "completed",
+      "inputs": 9,
+      "outputs": 11,
+      "manifest": "results/runs/phase5_problem4_final_paper_results/run_manifest.json"
+    }
+  ],
+  "metrics_and_report_comparison": {
+    "metric_rows": 67,
+    "metric_errors": [],
+    "q4_report": {
+      "sheets": 11,
+      "cells": 619,
+      "numeric_differing_cells": 50,
+      "max_absolute_difference": 4.3655745685100555e-11,
+      "tolerance": 1e-09,
+      "errors": [],
+      "tex_byte_matches": 10,
+      "xlsx_byte_equal": false
+    }
+  },
+  "integrity": {
+    "original_files": 1745,
+    "original_roots": 3,
+    "missing_paths": [],
+    "added_paths": [],
+    "reference_files": 36,
+    "held_files": 70,
+    "errors": [],
+    "original_comparison": [
+      "file_set",
+      "sha256",
+      "size",
+      "mtime_ns",
+      "mode"
+    ],
+    "reference_comparison": [
+      "sha256",
+      "size",
+      "mtime_ns",
+      "mode"
+    ]
+  },
+  "security": {
+    "held": 70,
+    "held_all_ignored_and_unchanged": true,
+    "not_copied": 124,
+    "no_restricted_hashes_in_public": true,
+    "unexpected_sensitive_findings": 0,
+    "known_private_author_matches": 0,
+    "binary_candidates": 0,
+    "rights": {
+      "user_sole_author_confirmed": true,
+      "contributor_permission_blocker": false,
+      "license_present": false,
+      "no_license_alone_is_not_publication_blocker": true,
+      "third_party_rights_not_inferred_from_code_authorship": true,
+      "numeric_summary_specific_third_party_restriction_found": false
+    },
+    "manifest": "docs/phase5_candidate_files.csv",
+    "local_security_evidence": ".release-audit/phase5/security_result.json"
+  },
+  "documents": {
+    "static": {
+      "markdown_files": 19,
+      "relative_links": 175,
+      "errors": [],
+      "image_references": [],
+      "powershell_exit": 0,
+      "command_target_checks": 31
+    },
+    "syntax_and_visual": {
+      "mermaid_version": "10.9.3",
+      "katex_version": "0.16.11",
+      "mermaid": 3,
+      "math_blocks": 7,
+      "math_inline": 55,
+      "errors": [],
+      "local_screenshot_review": {
+        "file": ".release-audit/phase5/document_render.png",
+        "reviewed": true,
+        "mermaid_visible": 3,
+        "all_formulae_visible": true,
+        "layout": "Chinese labels, edges, seven block and 55 inline formulae visible; no observed clipping",
+        "browser_automatic_dom_completion_verified": false,
+        "note": "dump-dom captured pending before later screenshot; no second browser attempt"
+      },
+      "github_live_verified": false
+    }
+  },
+  "limitations": [
+    "Full optimization not executed",
+    "External raw and frozen materials excluded from public scope",
+    "No license assigned",
+    "No cross-platform verification",
+    "GitHub live rendering not verified",
+    "Automated DOM finished marker not confirmed; screenshot visually reviewed"
+  ]
+}

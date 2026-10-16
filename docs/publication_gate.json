@@ -1,0 +1,22 @@
+{
+  "public_upload_allowed": false,
+  "license_assigned": false,
+  "raw_data_copied": false,
+  "reference_files_byte_preserved": true,
+  "held_paths": [
+    "results/reference/",
+    "experiments/**/results/",
+    "review_hold/",
+    ".release-audit/"
+  ],
+  "required_before_publication": [
+    "确认团队代码贡献者及许可证范围",
+    "审核派生结果的数据使用权限、Office元数据与私人路径",
+    "确认原始输入及地理数据再分发权限",
+    "完成Phase3路径和输出隔离",
+    "逐项审批后才解除相应忽略规则"
+  ],
+  "note": "Git忽略只防误提交；整个目录压缩上传仍会包含本地待审核材料。本阶段未初始化Git或上传。",
+  "original_raw_data_dem_maps_papers_copied": false,
+  "adapted_submission_workbook": "本地冻结待审，包含模板及衍生数据；不属于已授权公开材料"
+}

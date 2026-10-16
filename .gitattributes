@@ -1,0 +1,4 @@
+# Preserve audited file bytes instead of automatic line-ending conversion.
+* -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+# Archived patch grammar includes blank context lines prefixed by a space.
+docs/*.patch -whitespace

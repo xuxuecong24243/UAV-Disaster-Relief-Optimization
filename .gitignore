@@ -1,0 +1,47 @@
+# Phase 2: local frozen artifacts await privacy and rights review.
+/.release-audit/
+/review_hold/
+/results/reference/
+/experiments/**/results/
+/data/raw/**
+!/data/raw/README.md
+!/data/raw/expected_inputs.csv
+/results/runs/**
+!/results/runs/README.md
+__pycache__/
+*.py[cod]
+.python_packages/
+.idea/
+.venv/
+venv/
+*.log
+~$*
+*.rar
+.env
+.env.*
+gurobi.lic
+# Prepared inputs may contain the same restricted source data.
+/data/processed/**
+!/data/processed/README.md
+!/data/processed/input_map.csv
+.pytest_cache/
+.mypy_cache/
+
+# Phase 6: defense in depth; the release manifest is the actual whitelist.
+.vscode/
+*.lic
+*.pem
+*.key
+*.pkl
+*.pkl.gz
+*.zip
+*.7z
+*.xlsx
+*.xls
+*.tif
+*.tiff
+*.docx
+*.pdf
+*.png
+*.jpg
+*.jpeg

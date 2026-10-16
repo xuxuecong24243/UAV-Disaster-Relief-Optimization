@@ -1,0 +1,392 @@
+{
+  "date": "2026-10-16",
+  "scope": "self-authored code, original documentation, approved numeric summaries",
+  "assessment": "READY",
+  "copy": {
+    "task1": "PASS",
+    "task2": "PASS",
+    "copied_files": 96,
+    "bytes": 2573156,
+    "copy_hash_matches": 96,
+    "original_files_rechecked": 1745,
+    "held_files_rechecked": 70,
+    "candidate_file_metadata_snapshot": 20837,
+    "third_party_binary_copied": 0,
+    "destination": "UAV-Disaster-Relief-Optimization-public"
+  },
+  "environment_creation": {
+    "exit_code": 0,
+    "seconds": 39.2926602,
+    "system_site_packages": false,
+    "python": "3.9.10"
+  },
+  "main_install": {
+    "exit_code": 0,
+    "seconds": 378.0978428,
+    "command": "python -B -m pip install -r requirements.txt",
+    "process_only_proxy_compatibility": false
+  },
+  "optional_install": {
+    "exit_code": 0,
+    "seconds": 59.7460157,
+    "command": "python -B -m pip install -r requirements-experiments.txt",
+    "process_only_proxy_compatibility": false
+  },
+  "environment": {
+    "python": "3.9.10",
+    "isolated": true,
+    "user_site": false,
+    "packages": {
+      "numpy": {
+        "version": "2.0.2",
+        "requires_python": ">=3.9",
+        "inside_venv": true
+      },
+      "pandas": {
+        "version": "2.3.3",
+        "requires_python": ">=3.9",
+        "inside_venv": true
+      },
+      "matplotlib": {
+        "version": "3.9.4",
+        "requires_python": ">=3.9",
+        "inside_venv": true
+      },
+      "openpyxl": {
+        "version": "3.1.5",
+        "requires_python": ">=3.8",
+        "inside_venv": true
+      },
+      "rasterio": {
+        "version": "1.4.3",
+        "requires_python": ">=3.9",
+        "inside_venv": true
+      },
+      "pyproj": {
+        "version": "3.6.1",
+        "requires_python": ">=3.9",
+        "inside_venv": true
+      },
+      "gurobipy": {
+        "version": "12.0.3",
+        "requires_python": ">=3.9",
+        "inside_venv": true
+      },
+      "networkx": {
+        "version": "3.2.1",
+        "requires_python": ">=3.9",
+        "inside_venv": true
+      },
+      "affine": {
+        "version": "3.0.1",
+        "requires_python": ">=3.9",
+        "inside_venv": true
+      },
+      "Pillow": {
+        "version": "11.3.0",
+        "requires_python": ">=3.9",
+        "inside_venv": true
+      },
+      "ortools": {
+        "version": "9.15.6755",
+        "requires_python": ">= 3.9",
+        "inside_venv": true
+      }
+    },
+    "pip_check_exit": 0,
+    "pip_check_output": "No broken requirements found.\n"
+  },
+  "execution": [
+    {
+      "name": "list",
+      "exit_code": 0,
+      "seconds": 0.30179009999999995,
+      "cwd": "outside project root",
+      "entries": 41
+    },
+    {
+      "name": "demo",
+      "exit_code": 0,
+      "seconds": 27.0715426,
+      "cwd": "outside project root",
+      "result": {
+        "example": "synthetic_public_demo",
+        "competition_result": false,
+        "time_unit": "seconds",
+        "algorithm": "problem4_group_scheduler.interval_partition",
+        "intervals": [
+          {
+            "task_id": "A",
+            "start_s": 0.0,
+            "end_s": 4.0
+          },
+          {
+            "task_id": "B",
+            "start_s": 1.0,
+            "end_s": 3.0
+          },
+          {
+            "task_id": "C",
+            "start_s": 3.0,
+            "end_s": 5.0
+          },
+          {
+            "task_id": "D",
+            "start_s": 5.0,
+            "end_s": 7.0
+          }
+        ],
+        "resource_count": 2,
+        "assignments": [
+          {
+            "task_id": "A",
+            "resource_id": "DEMO-01",
+            "start_s": 0.0,
+            "end_s": 4.0
+          },
+          {
+            "task_id": "B",
+            "resource_id": "DEMO-02",
+            "start_s": 1.0,
+            "end_s": 3.0
+          },
+          {
+            "task_id": "C",
+            "resource_id": "DEMO-02",
+            "start_s": 3.0,
+            "end_s": 5.0
+          },
+          {
+            "task_id": "D",
+            "resource_id": "DEMO-01",
+            "start_s": 5.0,
+            "end_s": 7.0
+          }
+        ]
+      }
+    },
+    {
+      "name": "unittest",
+      "exit_code": 0,
+      "seconds": 45.58316430000001,
+      "cwd": "project root",
+      "tests": 24,
+      "unittest_seconds": 44.737,
+      "skipped": 9,
+      "passed": 15
+    }
+  ],
+  "source_protection": {
+    "original_1745_files": 1745,
+    "candidate_hashed_files": 166,
+    "candidate_tree_metadata_files": 20837,
+    "errors": [],
+    "metadata_errors": [],
+    "reference_files": 36,
+    "source_candidate_unchanged": true
+  },
+  "initial_or_latest_git_snapshot": {
+    "indexed_files": 106,
+    "index_exact_whitelist": true,
+    "index_bytes_equal_worktree": true,
+    "remote_count": 0,
+    "commit_created": false,
+    "commands": {
+      "status": {
+        "exit_code": 0,
+        "lines": 106
+      },
+      "diff_worktree": {
+        "exit_code": 0,
+        "lines": 0
+      },
+      "diff_staged": {
+        "exit_code": 0,
+        "lines": 0
+      },
+      "staged_summary": {
+        "exit_code": 0,
+        "lines": 107
+      }
+    }
+  },
+  "large_optimization_executed": false,
+  "private_inputs_available_in_public_copy": false,
+  "license_added": false,
+  "remote_operations_executed": false,
+  "security": {
+    "files": 106,
+    "errors": [],
+    "findings": [],
+    "python39_parsed": 49,
+    "legacy_modules": 41,
+    "legacy_ast_changes": [],
+    "legacy_byte_changes": [
+      "src/problem4/problem4_final_paper_results.py"
+    ],
+    "original_whitelist": 96,
+    "added_existing": [
+      ".gitattributes",
+      "docs/phase6_changes.csv",
+      "docs/phase6_github_release_checklist.md",
+      "docs/phase6_release_manifest.csv",
+      "docs/phase6_report.md",
+      "docs/phase6_security_report.md",
+      "docs/phase6_verification.json",
+      "scripts/demo_public_intervals.py",
+      "scripts/verify_public_release.py",
+      "tests/test_public_demo.py"
+    ],
+    "no_binary_or_private_material": true
+  },
+  "documents": {
+    "markdown_files": 22,
+    "links": 196,
+    "errors": [],
+    "image_references": [],
+    "command_targets": 26,
+    "powershell_blocks": 29,
+    "powershell_errors": [],
+    "mermaid": 3,
+    "math_blocks": 7,
+    "math_inline": 55,
+    "visual_errors": [],
+    "github_live_render_verified": false
+  },
+  "ignore_probes": {
+    "checks": 23,
+    "passed": 23,
+    "rows": [
+      {
+        "path": ".venv/Scripts/python.exe",
+        "ignored": true,
+        "expected": true
+      },
+      {
+        "path": ".release-audit/phase6/private.log",
+        "ignored": true,
+        "expected": true
+      },
+      {
+        "path": "data/raw/sample.xlsx",
+        "ignored": true,
+        "expected": true
+      },
+      {
+        "path": "data/processed/problem1/sample.xlsx",
+        "ignored": true,
+        "expected": true
+      },
+      {
+        "path": "results/reference/problem1/sample.xlsx",
+        "ignored": true,
+        "expected": true
+      },
+      {
+        "path": "results/runs/test/output.json",
+        "ignored": true,
+        "expected": true
+      },
+      {
+        "path": "review_hold/cache.pkl.gz",
+        "ignored": true,
+        "expected": true
+      },
+      {
+        "path": "experiments/problem2/results/sample.csv",
+        "ignored": true,
+        "expected": true
+      },
+      {
+        "path": "__pycache__/test.pyc",
+        "ignored": true,
+        "expected": true
+      },
+      {
+        "path": ".vscode/settings.json",
+        "ignored": true,
+        "expected": true
+      },
+      {
+        "path": ".env",
+        "ignored": true,
+        "expected": true
+      },
+      {
+        "path": "gurobi.lic",
+        "ignored": true,
+        "expected": true
+      },
+      {
+        "path": "secret.pem",
+        "ignored": true,
+        "expected": true
+      },
+      {
+        "path": "cache.pkl.gz",
+        "ignored": true,
+        "expected": true
+      },
+      {
+        "path": "map.tif",
+        "ignored": true,
+        "expected": true
+      },
+      {
+        "path": "paper.pdf",
+        "ignored": true,
+        "expected": true
+      },
+      {
+        "path": "photo.png",
+        "ignored": true,
+        "expected": true
+      },
+      {
+        "path": "old.zip",
+        "ignored": true,
+        "expected": true
+      },
+      {
+        "path": "README.md",
+        "ignored": false,
+        "expected": false
+      },
+      {
+        "path": "data/raw/README.md",
+        "ignored": false,
+        "expected": false
+      },
+      {
+        "path": "data/raw/expected_inputs.csv",
+        "ignored": false,
+        "expected": false
+      },
+      {
+        "path": "data/processed/input_map.csv",
+        "ignored": false,
+        "expected": false
+      },
+      {
+        "path": "results/runs/README.md",
+        "ignored": false,
+        "expected": false
+      }
+    ]
+  },
+  "credential_assignment_scan": {
+    "files": 106,
+    "findings": [],
+    "scan": "sensitive value assignment patterns"
+  },
+  "public_manifest": "docs/phase6_release_manifest.csv",
+  "historical_evidence": "Phase5 results are historical, not rerun in this public copy",
+  "limitations": [
+    "Nine private-data tests skipped",
+    "No full optimization or radio geometry rebuild",
+    "No complete-size Gurobi license validation",
+    "Windows/Python3.9.10 only",
+    "No GitHub live rendering",
+    "No general reuse license selected"
+  ]
+}

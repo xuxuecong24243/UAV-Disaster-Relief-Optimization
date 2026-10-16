@@ -1,0 +1,152 @@
+{
+  "phase": 4,
+  "scope": {
+    "documentation_only": true,
+    "algorithm_or_parameter_changes": false,
+    "optimization_runs": false,
+    "formal_results_regenerated": false,
+    "github_upload": false,
+    "phase5_started": false
+  },
+  "originals": {
+    "count": 1745,
+    "sha256_size_mtime_mode_match": true,
+    "file_set_match": true,
+    "errors": []
+  },
+  "reference": {
+    "count": 36,
+    "sha256_size_mtime_mode_match": true,
+    "errors": []
+  },
+  "python_files": {
+    "count": 44,
+    "unchanged": true
+  },
+  "non_source_artifacts": {
+    "count": 70,
+    "unchanged": true
+  },
+  "figures": {
+    "registered": 15,
+    "source_hashes_matched": 15,
+    "duplicate_hashes_matched": 11,
+    "readme_selected": 12,
+    "copied": 0,
+    "pending": 15
+  },
+  "ignore": {
+    "checked_paths": 168,
+    "ignored_existing": 71,
+    "public_candidate_files": 87,
+    "held_existing": 70,
+    "errors": [],
+    "candidate_git_initialized": false
+  },
+  "unittest": {
+    "command": "python -B -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "elapsed_s": 88.3253061,
+    "raw_data_explicit": true,
+    "log": "results/runs/phase4_regression/unittest.log",
+    "summary": "----------------------------------------------------------------------\nRan 15 tests in 87.017s\n\nOK\n",
+    "tests": 15,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "unittest_time_s": 87.017
+  },
+  "imports": {
+    "actual_modules": 41,
+    "optional_ortools_present": true,
+    "foreign_cwd": true,
+    "basis": "existing test_syntax_and_imports_from_foreign_cwd passed with optional OR-Tools present"
+  },
+  "metrics": {
+    "metrics": 67,
+    "workbooks": 8,
+    "readme_checks": 14,
+    "source_hashes": {
+      "results/reference/problem1/problem1_batch_optimization.xlsx": "99d6e5a6324f79729bdb92bdf18d417f9f80bac067631a8a4c8bf36298f995d6",
+      "results/reference/problem2/problem2_Z1_priority_result.xlsx": "ec60632be1c53609145637e42a5acaf763d41cc3072214527ce91a0628e7fd34",
+      "results/reference/problem3/problem3_vns_20cycles.xlsx": "35436faa67ba582a419efc2fdb0b320ceccd08ec2c0eb86d2c3965b464b3104b",
+      "results/reference/problem4/problem4_final_paper_results.xlsx": "09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512",
+      "results/reference/problem4/problem4_K2_all.xlsx": "a5196ef7eaf41dcd08a6f71dc8d861f12ce37555bf1213b7c7a48ffc40555f0c",
+      "results/reference/problem4/problem4_K2_pareto.xlsx": "7be8485aaf2ad5ca5a6adc55e375804de818014bd5af07feae0ad64c4339e620",
+      "results/reference/problem4/problem4_K3_all.xlsx": "daf14e7f91f0ccc59910159e29b98d3d88e4da94f2c906257b7ab7e5627287bb",
+      "results/reference/problem4/problem4_K3_pareto.xlsx": "7b17fc4569e4708a55fd4c5cb3d13790c8f92c50bc63f2234ce03ceba0d04dc1"
+    },
+    "errors": []
+  },
+  "documents": {
+    "markdown_files": 17,
+    "relative_links": 147,
+    "anchors_checked": 12,
+    "errors": [],
+    "links_to_ignored_files": [],
+    "command_rows": 36,
+    "command_target_checks": 29,
+    "visual_exit_code": 0,
+    "powershell_exit_code": 0
+  },
+  "powershell": {
+    "blocks": 16,
+    "errors": [],
+    "execution": "parse_only"
+  },
+  "visual_syntax": {
+    "mermaid_version": "10.9.3",
+    "katex_version": "0.16.11",
+    "mermaid": 3,
+    "math_blocks": 7,
+    "math_inline": 55,
+    "errors": [],
+    "github_live_render_verified": false
+  },
+  "commands": {
+    "static_only": 31,
+    "verified_phase4": 2,
+    "verified_phase3": 2,
+    "blocked": 1
+  },
+  "q4_resource_verification": {
+    "phase3_full_counts": 1008,
+    "phase4_regression_subset_counts": 24,
+    "phase4_in_memory_report_checks": 25,
+    "full_enumeration_rerun": false
+  },
+  "environment": {
+    "python": "3.9.10",
+    "platform": "win32",
+    "clean_install_verified": false,
+    "python_requirements_changed": false,
+    "ortools_version": "9.15.6755"
+  },
+  "privacy": {
+    "preliminary_public_text_files": 83,
+    "known_office_author_values_checked": 2,
+    "office_sources_examined": 49,
+    "private_matches_reported": 0,
+    "all_image_pixel_review_completed": false,
+    "publication_rights_confirmed": false
+  },
+  "authorization": {
+    "historical_review_rows": 194,
+    "copied_local_hold": 70,
+    "not_copied": 124,
+    "new_figure_rows": 15,
+    "figure_rows_overlap_historical_review": true,
+    "license_added": false
+  },
+  "unexecuted": [
+    "full Q1 solve",
+    "Q2 ALNS",
+    "Q3 ALNS/VNS",
+    "communication geometry rebuild",
+    "full Q4 enumeration",
+    "plot regeneration",
+    "clean dependency installation",
+    "GitHub live rendering"
+  ],
+  "local_audit_directory": ".release-audit/phase4/"
+}

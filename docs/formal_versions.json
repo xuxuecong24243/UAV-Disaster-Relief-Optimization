@@ -1,0 +1,112 @@
+{
+  "phase": 2,
+  "client_date": "2026-10-15",
+  "timezone": "Asia/Shanghai",
+  "algorithm_source_modified": false,
+  "formal_versions": [
+    {
+      "problem": "problem1",
+      "entrypoints": [
+        {
+          "path": "src/problem1/problem1_segment_preprocessing.py",
+          "sha256": "2904810bf3fa492bfa261d58adb3e2cd4ee91771e3b95aeb32600b71817849d4"
+        },
+        {
+          "path": "src/problem1/problem1_max_safe_payload.py",
+          "sha256": "20ff58f632c342a0906b2e0752ff36472cde98a3c9630e874af0f38452866ba8"
+        },
+        {
+          "path": "src/problem1/problem1_batch_optimization.py",
+          "sha256": "caab2786a4a57b64cf09cc33b28bf3ca162db57d88101e95b55c7e4ec998ae07"
+        }
+      ],
+      "result": {
+        "source_path": "20260923 huaweibei/问题一/results/problem1_batch_optimization.xlsx",
+        "release_path": "results/reference/problem1/problem1_batch_optimization.xlsx",
+        "sha256": "99d6e5a6324f79729bdb92bdf18d417f9f80bac067631a8a4c8bf36298f995d6"
+      }
+    },
+    {
+      "problem": "problem2",
+      "entrypoints": [
+        {
+          "path": "src/problem2/problem2_final_run_and_visualization.py",
+          "sha256": "3d1ec194e0342a336c67b544face1d74e3e18a79646fda648779927126fd41b8"
+        }
+      ],
+      "result": {
+        "source_path": "20260923 huaweibei/问题二/results/problem2_Z1_priority_result.xlsx",
+        "release_path": "results/reference/problem2/problem2_Z1_priority_result.xlsx",
+        "sha256": "ec60632be1c53609145637e42a5acaf763d41cc3072214527ce91a0628e7fd34"
+      }
+    },
+    {
+      "problem": "problem3",
+      "entrypoints": [
+        {
+          "path": "src/problem3/problem3_alns.py",
+          "sha256": "d6ff4c659d0d8711beecad32ad1cffa25fd82e9d598a7dd66694fa0cb0ba0afb"
+        },
+        {
+          "path": "src/problem3/problem3_vns.py",
+          "sha256": "505588bf089514670012392bc4619ba0bee85dba2a76397cb35f05669901f95a"
+        }
+      ],
+      "result": {
+        "source_path": "附件/问题3/results/problem3_vns_20cycles.xlsx",
+        "release_path": "results/reference/problem3/problem3_vns_20cycles.xlsx",
+        "sha256": "35436faa67ba582a419efc2fdb0b320ceccd08ec2c0eb86d2c3965b464b3104b"
+      }
+    },
+    {
+      "problem": "problem4",
+      "entrypoints": [
+        {
+          "path": "src/problem4/problem4_full_enumeration.py",
+          "sha256": "181e89a75d0d7d248134e706e75e8c5d1b0d387f7856e72b6b04bf88bb5b2a57"
+        },
+        {
+          "path": "src/problem4/problem4_selection_analysis.py",
+          "sha256": "b14e1834cfb634bd8e79c6872ae67cd50b3a22f7e672c5f43f614f338c543005"
+        },
+        {
+          "path": "src/problem4/problem4_final_paper_results.py",
+          "sha256": "e96f6eebaca60dbae3dbd8e7d9a7d6e1eec97d36db4127d4488c486780fa6a8f"
+        }
+      ],
+      "result": {
+        "source_path": "20260923 huaweibei/问题四/result4/problem4_final_paper_results.xlsx",
+        "release_path": "results/reference/problem4/problem4_final_paper_results.xlsx",
+        "sha256": "09d3538b1dba0b15224086ee0159af4ead2f1173701c45a5586e0d6955baa512"
+      }
+    }
+  ],
+  "problem2_parameters": {
+    "MAX_ITERATIONS": 1000,
+    "RANDOM_SEED": 20260927,
+    "OBJECTIVE_WEIGHTS": [
+      0.55,
+      0.15,
+      0.15,
+      0.15
+    ],
+    "REPAIR_TOP_K": 5,
+    "T0": 0.03,
+    "ALPHA": 0.98,
+    "DESTROY_RATIO_MIN": 0.08,
+    "DESTROY_RATIO_MAX": 0.2
+  },
+  "problem3_selection": "附件/问题3/results/problem3_vns_20cycles.xlsx：20条有效运输架次；不采用开发版汇总行",
+  "problem4_selection": [
+    "K2-032",
+    "K3-007"
+  ],
+  "full_reproduction_verified": false,
+  "paper_basis": {
+    "source_path": "20260923 huaweibei/论文/附件3：“华为杯”第二十三届中国研究生数学建模竞赛论文模板 - v1.docx",
+    "sha256": "44f80621291b4c2f4fe31362277803863998474ca6b33b64110d2aa084f2cf0d",
+    "user_confirmed_final": true,
+    "copied": false,
+    "authorization_status": "论文及合作队员公开范围待审"
+  }
+}

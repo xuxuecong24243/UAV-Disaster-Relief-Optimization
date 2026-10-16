@@ -1,0 +1,418 @@
+{
+  "originals": {
+    "count": 1745,
+    "changes": [],
+    "added": [],
+    "missing": [],
+    "checked": [
+      "file_set",
+      "sha256",
+      "size",
+      "mtime_ns",
+      "mode"
+    ]
+  },
+  "reference": {
+    "count": 36,
+    "errors": [],
+    "checked": [
+      "sha256",
+      "size",
+      "mtime_ns",
+      "mode"
+    ]
+  },
+  "retained_non_source_artifacts": {
+    "count": 70,
+    "errors": []
+  },
+  "unittest": {
+    "exit_code": 0,
+    "elapsed_s": 48.4651572,
+    "command": "python -B -m unittest discover -s tests -p test_release.py -v",
+    "external_raw_explicit": true,
+    "log": "results/runs/phase3_validation_final/unittest.log",
+    "tests": 15,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "filehandle_fix_targeted_recheck": {
+    "exit_code": 0,
+    "elapsed_s": 20.630671,
+    "resource_warning": false
+  },
+  "cli": {
+    "listed": 41,
+    "list_exit": 0,
+    "missing_input_exit": 1,
+    "missing_input_clear": true,
+    "existing_run_exit": 2,
+    "existing_manifest_unchanged": true
+  },
+  "q4_report_comparison": {
+    "sheets": 11,
+    "cells": 619,
+    "numeric_differing_cells": 50,
+    "max_absolute_difference": 4.3655745685100555e-11,
+    "tolerance_used": 1e-09,
+    "errors": [],
+    "tex_matches": 10,
+    "tex_count": 10,
+    "byte_equal_xlsx": false,
+    "differences": [
+      {
+        "sheet": "Table3_工作量",
+        "row": 2,
+        "column": 5,
+        "absolute_difference": 8.881784197001252e-16
+      },
+      {
+        "sheet": "Table3_工作量",
+        "row": 2,
+        "column": 7,
+        "absolute_difference": 4.3655745685100555e-11
+      },
+      {
+        "sheet": "Table3_工作量",
+        "row": 2,
+        "column": 8,
+        "absolute_difference": 3.2741809263825417e-11
+      },
+      {
+        "sheet": "Table3_工作量",
+        "row": 3,
+        "column": 8,
+        "absolute_difference": 4.092726157978177e-12
+      },
+      {
+        "sheet": "Table3_工作量",
+        "row": 4,
+        "column": 5,
+        "absolute_difference": 1.3322676295501878e-15
+      },
+      {
+        "sheet": "Table3_工作量",
+        "row": 4,
+        "column": 7,
+        "absolute_difference": 1.4551915228366852e-11
+      },
+      {
+        "sheet": "Table3_工作量",
+        "row": 4,
+        "column": 8,
+        "absolute_difference": 1.0913936421275139e-11
+      },
+      {
+        "sheet": "Table3_工作量",
+        "row": 5,
+        "column": 5,
+        "absolute_difference": 8.881784197001252e-16
+      },
+      {
+        "sheet": "Table3_工作量",
+        "row": 5,
+        "column": 7,
+        "absolute_difference": 1.4551915228366852e-11
+      },
+      {
+        "sheet": "Table3_工作量",
+        "row": 5,
+        "column": 8,
+        "absolute_difference": 1.8189894035458565e-11
+      },
+      {
+        "sheet": "Table3_工作量",
+        "row": 6,
+        "column": 8,
+        "absolute_difference": 5.002220859751105e-12
+      },
+      {
+        "sheet": "Table3_工作量",
+        "row": 7,
+        "column": 8,
+        "absolute_difference": 4.092726157978177e-12
+      },
+      {
+        "sheet": "Table3_工作量",
+        "row": 8,
+        "column": 5,
+        "absolute_difference": 1.3322676295501878e-15
+      },
+      {
+        "sheet": "Table3_工作量",
+        "row": 8,
+        "column": 7,
+        "absolute_difference": 1.4551915228366852e-11
+      },
+      {
+        "sheet": "Table3_工作量",
+        "row": 8,
+        "column": 8,
+        "absolute_difference": 1.0913936421275139e-11
+      },
+      {
+        "sheet": "Table6_执行性能",
+        "row": 2,
+        "column": 3,
+        "absolute_difference": 2.1316282072803006e-14
+      },
+      {
+        "sheet": "Table6_执行性能",
+        "row": 2,
+        "column": 4,
+        "absolute_difference": 8.881784197001252e-16
+      },
+      {
+        "sheet": "Table6_执行性能",
+        "row": 2,
+        "column": 5,
+        "absolute_difference": 1.4210854715202004e-14
+      },
+      {
+        "sheet": "Table6_执行性能",
+        "row": 3,
+        "column": 5,
+        "absolute_difference": 3.1086244689504383e-15
+      },
+      {
+        "sheet": "Table6_执行性能",
+        "row": 4,
+        "column": 4,
+        "absolute_difference": 1.7763568394002505e-15
+      },
+      {
+        "sheet": "Table6_执行性能",
+        "row": 4,
+        "column": 5,
+        "absolute_difference": 4.263256414560601e-14
+      },
+      {
+        "sheet": "Table6_执行性能",
+        "row": 5,
+        "column": 3,
+        "absolute_difference": 2.842170943040401e-14
+      },
+      {
+        "sheet": "Table6_执行性能",
+        "row": 5,
+        "column": 4,
+        "absolute_difference": 8.881784197001252e-16
+      },
+      {
+        "sheet": "Table6_执行性能",
+        "row": 5,
+        "column": 5,
+        "absolute_difference": 2.842170943040401e-14
+      },
+      {
+        "sheet": "Table6_执行性能",
+        "row": 6,
+        "column": 5,
+        "absolute_difference": 1.7763568394002505e-15
+      },
+      {
+        "sheet": "Table6_执行性能",
+        "row": 7,
+        "column": 5,
+        "absolute_difference": 3.1086244689504383e-15
+      },
+      {
+        "sheet": "Table6_执行性能",
+        "row": 8,
+        "column": 4,
+        "absolute_difference": 2.6645352591003757e-15
+      },
+      {
+        "sheet": "Table6_执行性能",
+        "row": 8,
+        "column": 5,
+        "absolute_difference": 4.263256414560601e-14
+      },
+      {
+        "sheet": "Table7_均衡性",
+        "row": 2,
+        "column": 4,
+        "absolute_difference": 1.9984014443252818e-15
+      },
+      {
+        "sheet": "Table7_均衡性",
+        "row": 2,
+        "column": 5,
+        "absolute_difference": 1.9984014443252818e-15
+      },
+      {
+        "sheet": "Table7_均衡性",
+        "row": 2,
+        "column": 7,
+        "absolute_difference": 3.9968028886505635e-15
+      },
+      {
+        "sheet": "Table7_均衡性",
+        "row": 2,
+        "column": 8,
+        "absolute_difference": 1.9984014443252818e-15
+      },
+      {
+        "sheet": "Table7_均衡性",
+        "row": 2,
+        "column": 9,
+        "absolute_difference": 1.9984014443252818e-15
+      },
+      {
+        "sheet": "Table7_均衡性",
+        "row": 2,
+        "column": 10,
+        "absolute_difference": 4.218847493575595e-15
+      },
+      {
+        "sheet": "Table7_均衡性",
+        "row": 3,
+        "column": 4,
+        "absolute_difference": 3.9968028886505635e-15
+      },
+      {
+        "sheet": "Table7_均衡性",
+        "row": 3,
+        "column": 5,
+        "absolute_difference": 3.1086244689504383e-15
+      },
+      {
+        "sheet": "Table7_均衡性",
+        "row": 3,
+        "column": 7,
+        "absolute_difference": 1.7763568394002505e-15
+      },
+      {
+        "sheet": "Table7_均衡性",
+        "row": 3,
+        "column": 8,
+        "absolute_difference": 3.1086244689504383e-15
+      },
+      {
+        "sheet": "Table7_均衡性",
+        "row": 3,
+        "column": 10,
+        "absolute_difference": 3.1086244689504383e-15
+      },
+      {
+        "sheet": "Table8_综合比较",
+        "row": 11,
+        "column": 2,
+        "absolute_difference": 8.881784197001252e-16
+      },
+      {
+        "sheet": "Table8_综合比较",
+        "row": 11,
+        "column": 3,
+        "absolute_difference": 1.7763568394002505e-15
+      },
+      {
+        "sheet": "Table8_综合比较",
+        "row": 11,
+        "column": 4,
+        "absolute_difference": 2.6645352591003757e-15
+      },
+      {
+        "sheet": "Table8_综合比较",
+        "row": 12,
+        "column": 2,
+        "absolute_difference": 4.263256414560601e-14
+      },
+      {
+        "sheet": "Table8_综合比较",
+        "row": 12,
+        "column": 3,
+        "absolute_difference": 4.263256414560601e-14
+      },
+      {
+        "sheet": "Table8_综合比较",
+        "row": 12,
+        "column": 4,
+        "absolute_difference": 4.263256414560601e-14
+      },
+      {
+        "sheet": "Table8_综合比较",
+        "row": 13,
+        "column": 3,
+        "absolute_difference": 1.1102230246251565e-16
+      },
+      {
+        "sheet": "Table8_综合比较",
+        "row": 13,
+        "column": 4,
+        "absolute_difference": 3.9968028886505635e-15
+      },
+      {
+        "sheet": "Table8_综合比较",
+        "row": 16,
+        "column": 3,
+        "absolute_difference": 1.9984014443252818e-15
+      },
+      {
+        "sheet": "Table8_综合比较",
+        "row": 17,
+        "column": 3,
+        "absolute_difference": 4.218847493575595e-15
+      },
+      {
+        "sheet": "Table8_综合比较",
+        "row": 17,
+        "column": 4,
+        "absolute_difference": 3.1086244689504383e-15
+      }
+    ]
+  },
+  "packages": {
+    "numpy": {
+      "version": "2.0.2",
+      "requires_python": ">=3.9"
+    },
+    "pandas": {
+      "version": "2.3.3",
+      "requires_python": ">=3.9"
+    },
+    "matplotlib": {
+      "version": "3.9.4",
+      "requires_python": ">=3.9"
+    },
+    "openpyxl": {
+      "version": "3.1.5",
+      "requires_python": ">=3.8"
+    },
+    "rasterio": {
+      "version": "1.4.3",
+      "requires_python": ">=3.9"
+    },
+    "pyproj": {
+      "version": "3.6.1",
+      "requires_python": ">=3.9"
+    },
+    "gurobipy": {
+      "version": "12.0.3",
+      "requires_python": ">=3.9"
+    },
+    "networkx": {
+      "version": "3.2.1",
+      "requires_python": ">=3.9"
+    },
+    "affine": {
+      "version": "3.0.1",
+      "requires_python": ">=3.9"
+    },
+    "Pillow": {
+      "version": "11.3.0",
+      "requires_python": ">=3.9"
+    },
+    "ortools": {
+      "version": "9.15.6755",
+      "requires_python": ">= 3.9"
+    }
+  },
+  "scope": {
+    "large_q2_q3_search_run": false,
+    "full_q1_solve_run": false,
+    "full_cache_rebuild_run": false,
+    "full_q4_partition_enumeration_run": false
+  }
+}

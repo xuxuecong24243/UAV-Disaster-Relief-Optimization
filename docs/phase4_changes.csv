@@ -1,0 +1,18 @@
+﻿path,change,before_sha256,after_sha256,hash_note
+README.md,modified,61c5fff500a88492da2210e4f8dd0e42c022c22bf72d5ca652e678626102d9bd,8ebe060005e24ed33842552bd5d6473c60c6f97035211bab911b01e984f4025e,documentation or audit only; algorithms unchanged
+docs/commands.csv,added,,67244d39a9e8fdd5aaae815b213baaabf5f8e9f1f9512ac3a8ef6345bf0c82de,documentation or audit only; algorithms unchanged
+docs/figures.csv,added,,8a623178fd0cc5b86386223318eed2278b52e032b4c0b802a86c51f3fda25851,documentation or audit only; algorithms unchanged
+docs/figures.md,added,,28ad59dea3c327e44db43e52cf25cd00843e118724bd68ea9c195bf5e1008df2,documentation or audit only; algorithms unchanged
+docs/known_issues.md,added,,6bfa2aefb455de36a2d68e6c2c5de9b0fac5b88d7f02496fa186fabefd370c99,documentation or audit only; algorithms unchanged
+docs/methodology.md,added,,05ed0315c93ee99ec142fcd147138d837b26adc260e7958a9d4208e0a9156743,documentation or audit only; algorithms unchanged
+docs/phase4_changes.csv,added,,,self-generated audit record; see current checksums except checksum file itself
+docs/phase4_changes.patch,added,,,self-generated audit record; see current checksums except checksum file itself
+docs/phase4_current_checksums.csv,added,,,self-generated audit record; see current checksums except checksum file itself
+docs/phase4_report.md,added,,71d362443f05088a51a0f260090ce2a4bf18f288c1a6fdfd89e11b5fc1d5174d,documentation or audit only; algorithms unchanged
+docs/phase4_verification.json,added,,9bfb07109a33ecc204daf4a9cd18cdb919e1b91a761b3bdefc0a8cdedb305f10,documentation or audit only; algorithms unchanged
+docs/publication_review.md,added,,2f12a010ec878ebac2f48720aa6698c9c5c13fb2da17c8da8cf09c949de19890,documentation or audit only; algorithms unchanged
+docs/result_metrics.csv,added,,d567eb328de57250de0e40f04ecbc44fdd5713644e56412d52564916836adac9,documentation or audit only; algorithms unchanged
+docs/results.md,added,,84afa36d17f139203aa897e1e26c9b7aedaf76c5f6d6a8ed234d2336db4e749b,documentation or audit only; algorithms unchanged
+docs/running.md,modified,9a35c886283529778952f1ba21f9703d214e9d34d4d7c291fc5500385fc2682d,e6f942d49066262297da4ae01f7fe344fa1a7789397391f44e173e7cf92106f0,documentation or audit only; algorithms unchanged
+experiments/README.md,added,,475a83375fc6ca4edf73a73a5fc89a46bf5cd970f5c960ef5982a02041ecb93c,documentation or audit only; algorithms unchanged
+results/runs/README.md,modified,be94799ecd62d47ffd20d7403f63b27417844e8848f09107e92e3e69fdc9d873,58b002d4cd9e7b22993a7f68fd95390369a95f8515a13135cd641dcc3b5f71f6,documentation or audit only; algorithms unchanged
